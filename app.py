@@ -44,15 +44,10 @@ if uploaded_files:
         with open(save_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
 
-        # Estimate remaining time
-        if durations:
-            avg_duration = np.mean(durations)
-            files_left = len(uploaded_files) - i + 1
-            eta = avg_duration * files_left
-            st.info(f"⏳ Estimated time remaining: {eta:.0f} seconds for {files_left} file(s)")
-        else:
+        # Show "estimating..." if first file
+        if not durations:
             st.info("⏳ Estimating time... (processing first file)")
-    
+
         with st.spinner("Transcribing..."):
             start = time.time()
             transcript = transcribe_audio(save_path)
@@ -60,7 +55,14 @@ if uploaded_files:
             durations.append(duration)
 
         st.success(f"✅ Transcription completed in {duration:.2f} seconds.")
-    
+
+        # ✅ Estimate remaining time AFTER first file
+        avg_duration = np.mean(durations)
+        files_left = len(uploaded_files) - i
+        if files_left > 0:
+            eta = avg_duration * files_left
+            st.info(f"⏳ Estimated time remaining: {eta:.0f} seconds for {files_left} file(s)")
+
         # Show transcript
         st.subheader("📝 Transcript")
         st.text_area("Transcription Result", transcript, height=300, key=uploaded_file.name)
@@ -68,6 +70,7 @@ if uploaded_files:
         # Sentiment
         sentiment = get_sentiment(transcript)
         st.markdown(f"**😊 Sentiment:** {sentiment}")
+
 
         # Keywords
         keywords_found = find_keywords(transcript)
