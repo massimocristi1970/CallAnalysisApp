@@ -12,6 +12,9 @@ from analyser import get_sentiment, find_keywords
 # Choose Whisper model size from sidebar
 model_size = st.sidebar.selectbox("Select Whisper model size", ["small", "base"])
 
+# Set the model based on selection
+set_model_size(model_size)
+
 # ✅ GPU Availability Notice
 st.sidebar.write("GPU available:", torch.cuda.is_available())
 if not torch.cuda.is_available():
