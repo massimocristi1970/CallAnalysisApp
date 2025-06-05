@@ -37,7 +37,7 @@ if uploaded_files:
         # ✅ Transcription with timing
         with st.spinner("Transcribing..."):
             start = time.time()
-            transcript = transcribe_audio(save_path, model_size=model_size)
+            transcript = transcribe_audio(save_path)  # ✅ Fixed
             duration = time.time() - start
         st.success(f"✅ Transcription completed in {duration:.2f} seconds.")
 
