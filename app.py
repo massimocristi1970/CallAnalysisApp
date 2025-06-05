@@ -11,9 +11,10 @@ st.title("📞 Call Recording Transcriber")
 uploaded_files = st.file_uploader("Upload call recordings (MP3/WAV)", type=["mp3", "wav"], accept_multiple_files=True)
 
 if uploaded_files:
-    for uploaded_file in uploaded_files:
-        st.markdown(f"---")
-        st.markdown(f"### 📁 Processing: {uploaded_file.name}")
+    for i, uploaded_file in enumerate(uploaded_files, start=1):
+    st.markdown(f"---")
+    st.markdown(f"### 📁 Processing file {i} of {len(uploaded_files)}: `{uploaded_file.name}`")
+
 
         # Save file
         save_path = os.path.join("audio_samples", uploaded_file.name)
