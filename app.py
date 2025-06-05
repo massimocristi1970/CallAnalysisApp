@@ -1,5 +1,8 @@
 # app.py
 import streamlit as st
+
+st.set_page_config(page_title="Call Transcriber", layout="centered")  # ← must be first Streamlit command
+
 import os
 import time
 import torch
@@ -8,8 +11,6 @@ from analyser import get_sentiment, find_keywords
 
 # Choose Whisper model size from sidebar
 model_size = st.sidebar.selectbox("Select Whisper model size", ["small", "base"])
-
-st.set_page_config(page_title="Call Transcriber", layout="centered")
 
 # ✅ GPU Availability Notice
 st.sidebar.write("GPU available:", torch.cuda.is_available())
