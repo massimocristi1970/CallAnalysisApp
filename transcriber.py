@@ -19,11 +19,11 @@ def transcribe_audio(file_path):
         # Convert MP3 to temporary WAV file
         if file_path.lower().endswith(".mp3"):
             audio = AudioSegment.from_mp3(file_path)
-            tmp_wav = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-            audio.export(tmp_wav.name, format="wav")
-            tmp_wav.close()
-            file_path = tmp_wav.name
-            is_temp = True
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_wav:
+                audio.export(tmp_wav.name, format="wav")
+                file_path = tmp_wav.name
+                is_temp = True
+
 
         result = model.transcribe(file_path, fp16=False)
         transcript = result["text"]
