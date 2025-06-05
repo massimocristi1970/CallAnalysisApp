@@ -6,7 +6,7 @@ st.set_page_config(page_title="Call Transcriber", layout="centered")  # ← must
 import os
 import time
 import torch
-from transcriber import transcribe_audio
+from transcriber import transcribe_audio, set_model_size
 from analyser import get_sentiment, find_keywords
 
 # Choose Whisper model size from sidebar
