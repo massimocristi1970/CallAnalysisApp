@@ -6,6 +6,9 @@ import torch
 from transcriber import transcribe_audio
 from analyser import get_sentiment, find_keywords
 
+# Choose Whisper model size from sidebar
+model_size = st.sidebar.selectbox("Select Whisper model size", ["small", "base"])
+
 st.set_page_config(page_title="Call Transcriber", layout="centered")
 
 # ✅ GPU Availability Notice
@@ -33,7 +36,7 @@ if uploaded_files:
         # ✅ Transcription with timing
         with st.spinner("Transcribing..."):
             start = time.time()
-            transcript = transcribe_audio(save_path)
+            transcript = transcribe_audio(save_path, model_size=model_size)
             duration = time.time() - start
         st.success(f"✅ Transcription completed in {duration:.2f} seconds.")
 
