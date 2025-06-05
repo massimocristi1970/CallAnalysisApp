@@ -6,6 +6,7 @@ st.set_page_config(page_title="Call Transcriber", layout="centered")  # ← must
 import os
 import time
 import torch
+import numpy as np
 from transcriber import transcribe_audio, set_model_size
 from analyser import get_sentiment, find_keywords
 
@@ -29,6 +30,7 @@ uploaded_files = st.file_uploader(
 
 if uploaded_files:
     progress_bar = st.progress(0, text="Processing uploaded files...")
+    durations = []
 
     for i, uploaded_file in enumerate(uploaded_files, start=1):
         progress = i / len(uploaded_files)
@@ -42,14 +44,24 @@ if uploaded_files:
         with open(save_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
 
-        # Transcribe
+        # Estimate remaining time
+        if durations:
+            avg_duration = np.mean(durations)
+            files_left = len(uploaded_files) - i + 1
+            eta = avg_duration * files_left
+            st.info(f"⏳ Estimated time remaining: {eta:.0f} seconds for {files_left} file(s)")
+        else:
+            st.info("⏳ Estimating time... (processing first file)")
+    
         with st.spinner("Transcribing..."):
             start = time.time()
             transcript = transcribe_audio(save_path)
             duration = time.time() - start
-        st.success(f"✅ Transcription completed in {duration:.2f} seconds.")
+            durations.append(duration)
 
-        # Display transcript
+        st.success(f"✅ Transcription completed in {duration:.2f} seconds.")
+    
+        # Show transcript
         st.subheader("📝 Transcript")
         st.text_area("Transcription Result", transcript, height=300, key=uploaded_file.name)
 
