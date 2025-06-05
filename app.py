@@ -6,6 +6,9 @@ from analyser import get_sentiment, find_keywords
 
 st.set_page_config(page_title="Call Transcriber", layout="centered")
 
+import torch
+st.sidebar.write("GPU available:", torch.cuda.is_available())
+
 st.title("📞 Call Recording Transcriber")
 
 uploaded_files = st.file_uploader("Upload call recordings (MP3/WAV)", type=["mp3", "wav"], accept_multiple_files=True)
