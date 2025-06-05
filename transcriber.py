@@ -1,23 +1,25 @@
 import whisper
 import os
+from pydub import AudioSegment
+import tempfile
 
-def transcribe_audio(file_path, model_size="small"):
+model = None  # will be loaded based on selection in app
+
+def set_model_size(size):
+    global model
+    model = whisper.load_model(size)
+
+def transcribe_audio(file_path):
     try:
-        # Load model dynamically based on sidebar selection
-        model = whisper.load_model(model_size)
-
-        # Check file existence and non-zero size
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
             return "[ERROR] File is missing or empty."
 
-        # Optional: validate WAV format
-        import wave
-        try:
-            with wave.open(file_path, 'rb') as wf:
-                if wf.getnframes() == 0:
-                    return "[ERROR] Audio contains no frames."
-        except wave.Error:
-            pass  # Might not be WAV, which is fine for Whisper.
+        # Convert MP3 to WAV if needed
+        if file_path.lower().endswith(".mp3"):
+            audio = AudioSegment.from_mp3(file_path)
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_wav:
+                audio.export(tmp_wav.name, format="wav")
+                file_path = tmp_wav.name
 
         result = model.transcribe(file_path, fp16=False)
         return result["text"]
