@@ -14,21 +14,24 @@ def transcribe_audio(file_path):
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
             return "[ERROR] File is missing or empty."
 
-        is_temp = False  # Flag to track if we created a temp file
+        is_temp = False  # Track if we're converting MP3 to WAV
 
-        # Convert MP3 to temporary WAV file
+        # ✅ Convert MP3 to temp WAV
         if file_path.lower().endswith(".mp3"):
             audio = AudioSegment.from_mp3(file_path)
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_wav:
                 audio.export(tmp_wav.name, format="wav")
+                tmp_wav.flush()
                 file_path = tmp_wav.name
                 is_temp = True
 
+        # ✅ DEBUG: Check actual file being transcribed
+        print(f"Transcribing: {file_path}")
 
         result = model.transcribe(file_path, fp16=False)
         transcript = result["text"]
 
-        # Clean up temporary file
+        # ✅ Clean up temp WAV
         if is_temp and os.path.exists(file_path):
             os.remove(file_path)
 
@@ -36,4 +39,3 @@ def transcribe_audio(file_path):
 
     except Exception as e:
         return f"[ERROR] Transcription failed: {str(e)}"
-
