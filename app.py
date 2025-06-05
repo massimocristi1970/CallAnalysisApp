@@ -15,8 +15,8 @@ uploaded_files = st.file_uploader("Upload call recordings (MP3/WAV)", type=["mp3
 
 if uploaded_files:
     for i, uploaded_file in enumerate(uploaded_files, start=1):
-    st.markdown(f"---")
-    st.markdown(f"### 📁 Processing file {i} of {len(uploaded_files)}: `{uploaded_file.name}`")
+        st.markdown(f"---")
+        st.markdown(f"### 📁 Processing file {i} of {len(uploaded_files)}: `{uploaded_file.name}`")
 
 
         # Save file
