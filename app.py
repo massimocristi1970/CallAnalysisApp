@@ -28,31 +28,36 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
+    progress_bar = st.progress(0, text="Processing uploaded files...")
+
     for i, uploaded_file in enumerate(uploaded_files, start=1):
+        progress = i / len(uploaded_files)
+        progress_bar.progress(progress, text=f"Processing file {i} of {len(uploaded_files)}")
+
         st.markdown("---")
         st.markdown(f"### 📁 Processing file {i} of {len(uploaded_files)}: `{uploaded_file.name}`")
 
-        # ✅ Save uploaded file
+        # Save uploaded file
         save_path = os.path.join("audio_samples", uploaded_file.name)
         with open(save_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
 
-        # ✅ Transcription with timing
+        # Transcribe
         with st.spinner("Transcribing..."):
             start = time.time()
-            transcript = transcribe_audio(save_path)  # ✅ Fixed
+            transcript = transcribe_audio(save_path)
             duration = time.time() - start
         st.success(f"✅ Transcription completed in {duration:.2f} seconds.")
 
-        # ✅ Display transcript
+        # Display transcript
         st.subheader("📝 Transcript")
         st.text_area("Transcription Result", transcript, height=300, key=uploaded_file.name)
 
-        # ✅ Sentiment analysis
+        # Sentiment
         sentiment = get_sentiment(transcript)
         st.markdown(f"**😊 Sentiment:** {sentiment}")
 
-        # ✅ Keyword detection
+        # Keywords
         keywords_found = find_keywords(transcript)
         if keywords_found:
             st.markdown("**🔍 Keywords Detected:**")
@@ -60,6 +65,10 @@ if uploaded_files:
                 st.markdown(f"- {kw}")
         else:
             st.markdown("**✅ No key phrases detected.**")
+
+    # ✅ Done!
+    progress_bar.empty()
+
 
 # ✅ TEMP TEST: Controlled by sidebar checkbox
 if st.sidebar.checkbox("Run test with sample transcript"):
