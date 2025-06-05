@@ -8,35 +8,37 @@ st.set_page_config(page_title="Call Transcriber", layout="centered")
 
 st.title("📞 Call Recording Transcriber")
 
-uploaded_file = st.file_uploader("Upload a call recording (MP3/WAV)", type=["mp3", "wav"])
+uploaded_files = st.file_uploader("Upload call recordings (MP3/WAV)", type=["mp3", "wav"], accept_multiple_files=True)
 
-if uploaded_file:
-    # Save uploaded file
-    save_path = os.path.join("audio_samples", uploaded_file.name)
-    with open(save_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
+if uploaded_files:
+    for uploaded_file in uploaded_files:
+        st.markdown(f"---")
+        st.markdown(f"### 📁 Processing: {uploaded_file.name}")
 
-    st.success(f"Uploaded: {uploaded_file.name}")
+        # Save file
+        save_path = os.path.join("audio_samples", uploaded_file.name)
+        with open(save_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
 
-    with st.spinner("Transcribing..."):
-        transcript = transcribe_audio(save_path)
+        with st.spinner("Transcribing..."):
+            transcript = transcribe_audio(save_path)
 
-    st.subheader("📝 Transcript")
-    st.text_area("Transcription Result", transcript, height=400)
+        st.subheader("📝 Transcript")
+        st.text_area("Transcription Result", transcript, height=300, key=uploaded_file.name)
 
-    # ✅ Sentiment
-    sentiment = get_sentiment(transcript)
-    st.markdown(f"**😊 Sentiment:** {sentiment}")
+        # Sentiment
+        sentiment = get_sentiment(transcript)
+        st.markdown(f"**😊 Sentiment:** {sentiment}")
 
-    # ✅ Keyword detection
-    keywords_found = find_keywords(transcript)
+        # Keywords
+        keywords_found = find_keywords(transcript)
+        if keywords_found:
+            st.markdown("**🔍 Keywords Detected:**")
+            for kw in keywords_found:
+                st.markdown(f"- {kw}")
+        else:
+            st.markdown("**✅ No key phrases detected.**")
 
-    if keywords_found:
-        st.markdown("**🔍 Keywords Detected:**")
-        for kw in keywords_found:
-            st.markdown(f"- {kw}")
-    else:
-        st.markdown("**✅ No key phrases detected.**")
 
 # ✅ TEMP TEST: Controlled by sidebar checkbox
 if st.sidebar.checkbox("Run test with sample transcript"):
