@@ -21,7 +21,7 @@ st.sidebar.write("GPU available:", torch.cuda.is_available())
 if not torch.cuda.is_available():
     st.sidebar.warning("⚠️ Running on CPU — transcriptions may take longer.")
 
-st.title("📞 Call Recording Transcriber")
+st.title("📞 Call Analysis Scorecard")
 
 # ✅ Multi-file uploader
 uploaded_files = st.file_uploader(
