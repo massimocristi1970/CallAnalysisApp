@@ -96,7 +96,15 @@ if uploaded_files:
 
 # ✅ TEMP TEST: Controlled by sidebar checkbox
 if st.sidebar.checkbox("Run test with sample transcript"):
-    transcript = "I want to file a complaint because I'm facing financial difficulties and unable to pay."
+    transcript = transcript = (
+    "I want to file a complaint because I'm facing financial difficulties, feeling low, "
+    "and unable to pay. I’ve been signed off work due to mental health issues, possibly PTSD or depression, "
+    "and I recently had surgery. The stress is overwhelming and I’m grieving the loss of a loved one. "
+    "I’ve even thought about suicide. I’m currently unemployed and struggling to cover funeral costs, "
+    "and I’ve had to speak to the police after a domestic abuse incident. I think the manager was irresponsible "
+    "in how they handled my case."
+)
+
     sentiment = get_sentiment(transcript)
     st.markdown(f"**😊 Sentiment (test):** {sentiment}")
     keywords_found = find_keywords(transcript)
