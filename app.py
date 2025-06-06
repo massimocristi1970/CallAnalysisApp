@@ -64,22 +64,31 @@ if uploaded_files:
             st.info(f"⏳ Estimated time remaining: {eta:.0f} seconds for {files_left} file(s)")
 
         # Show transcript
-        st.subheader("📝 Transcript")
-        st.text_area("Transcription Result", transcript, height=300, key=uploaded_file.name)
+        # Keyword highlighting
+        keyword_matches = find_keywords(transcript)
+        highlighted = transcript
+        offset = 0  # adjust for <mark> tags
 
-        # Sentiment
-        sentiment = get_sentiment(transcript)
-        st.markdown(f"**😊 Sentiment:** {sentiment}")
+        for match in keyword_matches:
+            start = match['start'] + offset
+            end = match['end'] + offset
+            phrase = highlighted[start:end]
+            highlighted_phrase = f'<mark style="background-color: #ffff00">{phrase}</mark>'
+            highlighted = highlighted[:start] + highlighted_phrase + highlighted[end:]
+            offset += len(highlighted_phrase) - len(phrase)
 
+        # Display highlighted transcript
+        st.subheader("📝 Transcript with Highlights")
+        st.markdown(highlighted, unsafe_allow_html=True)
 
         # Keywords
-        keywords_found = find_keywords(transcript)
-        if keywords_found:
+        if keyword_matches:
             st.markdown("**🔍 Keywords Detected:**")
-            for kw in keywords_found:
+            for kw in sorted(set(m["phrase"] for m in keyword_matches)):
                 st.markdown(f"- {kw}")
         else:
             st.markdown("**✅ No key phrases detected.**")
+
 
     # ✅ Done!
     progress_bar.empty()
