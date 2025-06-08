@@ -1,5 +1,7 @@
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+import re
 
+# Sentiment setup
 analyzer = SentimentIntensityAnalyzer()
 
 def get_sentiment(text):
@@ -12,8 +14,8 @@ def get_sentiment(text):
         return "Negative"
     else:
         return "Neutral"
-import re
 
+# Keywords for detection
 KEYWORDS = [
     # Core and extended keywords
     "vulnerable", "late payment", "complaint", "refund", "threaten", 
@@ -43,3 +45,31 @@ def find_keywords(text):
 
     return found
 
+# ✅ FCA QA Scoring Categories
+def score_call(transcript):
+    transcript = transcript.lower()
+    scores = {
+        "Customer Understanding": 0,
+        "Fair Treatment": 0,
+        "Vulnerability Handling": 0,
+        "Resolution & Support": 0
+    }
+
+    # --- Category 1: Customer Understanding ---
+    if any(phrase in transcript for phrase in ["do you understand", "let me explain", "does that make sense", "is that clear"]):
+        scores["Customer Understanding"] = 1
+
+    # --- Category 2: Fair Treatment ---
+    if any(phrase in transcript for phrase in ["we're here to help", "take your time", "you have options", "we won’t pressure you"]):
+        scores["Fair Treatment"] = 1
+
+    # --- Category 3: Vulnerability Handling ---
+    if find_keywords(transcript):
+        if any(phrase in transcript for phrase in ["take a note of that", "i’ve flagged that", "we can offer support", "we'll pause things"]):
+            scores["Vulnerability Handling"] = 1
+
+    # --- Category 4: Resolution & Support ---
+    if any(phrase in transcript for phrase in ["payment plan", "breathing space", "write off", "income and expenditure", "support team"]):
+        scores["Resolution & Support"] = 1
+
+    return scores
