@@ -45,43 +45,55 @@ def find_keywords(text):
 
     return found
 
-# ✅ FCA QA Scoring Categories
+# FCA QA Scoring with extended phrases and scaled scoring
 def score_call(transcript):
     transcript = transcript.lower()
-    results = {}
 
-    # --- Category 1: Customer Understanding ---
-    phrases = ["do you understand", "let me explain", "does that make sense", "is that clear"]
-    found = any(p in transcript for p in phrases)
-    results["Customer Understanding"] = {
-        "score": int(found),
-        "explanation": "Agent checked for understanding." if found else "No evidence of checking customer understanding."
+    # Phrase lists (expanded)
+    understanding_phrases = [
+        "do you understand", "does that make sense", "is that clear", "let me explain",
+        "just to clarify", "shall I go over that again", "are you with me so far", 
+        "can I check you’re following", "do you follow what I’m saying", "i’ll explain that part again"
+    ]
+
+    fair_treatment_phrases = [
+        "we're here to help", "take your time", "you have options", "we won’t pressure you",
+        "there’s no rush", "whatever works best for you", "we’ll work with you", 
+        "you’re in control", "no pressure at all", "we’ll support your decision"
+    ]
+
+    vulnerability_phrases = [
+        "take a note of that", "i’ve flagged that", "we can offer support", "we'll pause things",
+        "we take that seriously", "let’s get you some help", "we can give you time", 
+        "you mentioned struggling", "let me make a note of that", "we’ll handle this sensitively"
+    ]
+
+    resolution_phrases = [
+        "payment plan", "breathing space", "write off", "income and expenditure", 
+        "support team", "we’ll review your budget", "let’s find a solution", 
+        "arrangement", "hardship support", "let’s put something in place"
+    ]
+
+    # Scoring
+    def score_category(phrases):
+        matches = sum(1 for p in phrases if p in transcript)
+        return 2 if matches > 1 else 1 if matches == 1 else 0
+
+    return {
+        "Customer Understanding": {
+            "score": score_category(understanding_phrases),
+            "explanation": "Evidence of checking or reinforcing understanding."
+        },
+        "Fair Treatment": {
+            "score": score_category(fair_treatment_phrases),
+            "explanation": "Evidence of treating customer fairly and with patience."
+        },
+        "Vulnerability Handling": {
+            "score": score_category(vulnerability_phrases) if find_keywords(transcript) else 0,
+            "explanation": "Recognition and appropriate handling of vulnerable disclosures."
+        },
+        "Resolution & Support": {
+            "score": score_category(resolution_phrases),
+            "explanation": "Evidence of support or effort to reach resolution."
+        }
     }
-
-    # --- Category 2: Fair Treatment ---
-    phrases = ["we're here to help", "take your time", "you have options", "we won’t pressure you"]
-    found = any(p in transcript for p in phrases)
-    results["Fair Treatment"] = {
-        "score": int(found),
-        "explanation": "Fair, non-pressured treatment offered." if found else "No clear reassurance or fair treatment wording detected."
-    }
-
-    # --- Category 3: Vulnerability Handling ---
-    keywords_found = find_keywords(transcript)
-    phrases = ["take a note of that", "i’ve flagged that", "we can offer support", "we'll pause things"]
-    flagged = any(p in transcript for p in phrases)
-    results["Vulnerability Handling"] = {
-        "score": int(bool(keywords_found) and flagged),
-        "explanation": "Potential vulnerability identified and acknowledged." if bool(keywords_found) and flagged
-                      else "No clear handling of potential vulnerability."
-    }
-
-    # --- Category 4: Resolution & Support ---
-    phrases = ["payment plan", "breathing space", "write off", "income and expenditure", "support team"]
-    found = any(p in transcript for p in phrases)
-    results["Resolution & Support"] = {
-        "score": int(found),
-        "explanation": "Practical support options were offered." if found else "No support options discussed."
-    }
-
-    return results
