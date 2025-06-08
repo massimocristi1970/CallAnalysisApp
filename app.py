@@ -9,6 +9,9 @@ import torch
 import numpy as np
 from transcriber import transcribe_audio, set_model_size
 from analyser import get_sentiment, find_keywords, score_call  # not score_qa
+from fpdf import FPDF
+from io import BytesIO
+
 
 # Sidebar: Choose Whisper model size
 model_size = st.sidebar.selectbox("Select Whisper model size", ["small", "base"])
@@ -20,6 +23,39 @@ st.title("📞 Call Analysis Scorecard")
 uploaded_files = st.file_uploader(
     "Upload call recordings (MP3/WAV)", type=["mp3", "wav"], accept_multiple_files=True
 )
+
+def generate_pdf(title, transcript, sentiment, keywords, qa_results):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    pdf.multi_cell(0, 10, txt=title, align='L')
+    pdf.ln()
+
+    pdf.set_font("Arial", style="B", size=12)
+    pdf.cell(0, 10, "Transcript:", ln=True)
+    pdf.set_font("Arial", size=12)
+    pdf.multi_cell(0, 10, transcript)
+    pdf.ln()
+
+    pdf.set_font("Arial", style="B", size=12)
+    pdf.cell(0, 10, f"Sentiment: {sentiment}", ln=True)
+
+    pdf.set_font("Arial", style="B", size=12)
+    pdf.cell(0, 10, "Keywords:", ln=True)
+    pdf.set_font("Arial", size=12)
+    for kw in sorted(set(keywords)):
+        pdf.cell(0, 10, f"- {kw}", ln=True)
+    pdf.ln()
+
+    pdf.set_font("Arial", style="B", size=12)
+    pdf.cell(0, 10, "QA Scoring Summary:", ln=True)
+    pdf.set_font("Arial", size=12)
+    for section, result in qa_results.items():
+        pdf.cell(0, 10, f"- {section}: {result['score']} - {result['explanation']}", ln=True)
+
+    return pdf
+
 
 if uploaded_files:
     progress_bar = st.progress(0, text="Processing uploaded files...")
@@ -91,9 +127,68 @@ if uploaded_files:
 
         total_score = sum(result["score"] for result in qa_results.values())
         st.markdown(f"### 🏁 Total Score: **{total_score}/4**")
+        # Generate and display PDF download button for this call
+        pdf = generate_pdf(
+            title=f"Call Summary – {uploaded_file.name}",
+            transcript=transcript,
+            sentiment=sentiment,
+            keywords=[m["phrase"] for m in keyword_matches],
+            qa_results=qa_results
+        )
+
+        pdf_bytes = BytesIO()
+        pdf.output(pdf_bytes)
+        pdf_bytes.seek(0)
+
+        st.download_button(
+            label="📥 Download PDF for this Call",
+            data=pdf_bytes,
+            file_name=f"{uploaded_file.name}_summary.pdf",
+            mime="application/pdf"
+        )
+
+        # Save for combined summary
+        if "summary_pdfs" not in st.session_state:
+            st.session_state["summary_pdfs"] = []
+
+        st.session_state["summary_pdfs"].append((uploaded_file.name, transcript, sentiment, keyword_matches, qa_results))
 
 
-    progress_bar.empty()
+
+         progress_bar.empty()
+
+    # ✅ Combined summary report
+    if "summary_pdfs" in st.session_state and st.session_state["summary_pdfs"]:
+        combined_pdf = FPDF()
+        for name, transcript, sentiment, keyword_matches, qa_results in st.session_state["summary_pdfs"]:
+            combined_pdf.add_page()
+            combined_pdf.set_font("Arial", size=12)
+            combined_pdf.multi_cell(0, 10, txt=f"Call: {name}", align='L')
+            combined_pdf.ln()
+            combined_pdf.multi_cell(0, 10, transcript)
+            combined_pdf.ln()
+            combined_pdf.cell(0, 10, f"Sentiment: {sentiment}", ln=True)
+            combined_pdf.cell(0, 10, "Keywords:", ln=True)
+            for kw in sorted(set(m["phrase"] for m in keyword_matches)):
+                combined_pdf.cell(0, 10, f"- {kw}", ln=True)
+            combined_pdf.cell(0, 10, "QA Scoring:", ln=True)
+            for section, result in qa_results.items():
+                combined_pdf.cell(0, 10, f"- {section}: {result['score']} - {result['explanation']}", ln=True)
+            combined_pdf.ln()
+
+        pdf_all = BytesIO()
+        combined_pdf.output(pdf_all)
+        pdf_all.seek(0)
+
+        st.download_button(
+            label="📄 Download Summary Report (All Calls)",
+            data=pdf_all,
+            file_name="Combined_Call_Summary.pdf",
+            mime="application/pdf"
+        )
+
+
+        
 
 # Test
 if st.sidebar.checkbox("Run test with sample transcript"):
@@ -116,7 +211,7 @@ if st.sidebar.checkbox("Run test with sample transcript"):
     else:
         st.markdown("**✅ No key phrases detected (test).**")
 
-    qa_results = score_call(transcript)
+    qa_results = score_call(transcript, call_type)
     st.subheader("📊 QA Scoring Summary (test)")
     for section, result in qa_results.items():
         emoji = "✅" if result["score"] == 1 else "❌"
