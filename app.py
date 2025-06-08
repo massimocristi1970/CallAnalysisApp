@@ -12,7 +12,7 @@ from analyser import get_sentiment, find_keywords, score_call  # not score_qa
 
 # Sidebar: Choose Whisper model size
 model_size = st.sidebar.selectbox("Select Whisper model size", ["small", "base"])
-call_type = st.sidebar.selectbox("Select Call Type", ["All", "Customer Service", "Collections", "Complaint", "Vulnerability"])
+call_type = st.sidebar.selectbox("Select Call Type", ["Customer Service", "Collections"])
 set_model_size(model_size)
 
 st.sidebar.write("GPU available:", torch.cuda.is_available())
