@@ -155,7 +155,7 @@ if uploaded_files:
 
 
 
-         progress_bar.empty()
+    progress_bar.empty()
 
     # ✅ Combined summary report
     if "summary_pdfs" in st.session_state and st.session_state["summary_pdfs"]:
