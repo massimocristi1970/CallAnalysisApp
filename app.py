@@ -143,8 +143,10 @@ if uploaded_files:
         )
 
         pdf_bytes = BytesIO()
-        pdf.output(pdf_bytes)
+        pdf_output = pdf.output(dest='S').encode('latin1')
+        pdf_bytes.write(pdf_output)
         pdf_bytes.seek(0)
+
 
         st.download_button(
             label="📥 Download PDF for this Call",
