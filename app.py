@@ -87,7 +87,7 @@ if uploaded_files:
 
         # QA Scoring (FCA-aligned)
         st.subheader("📊 QA Scoring Summary")
-        qa_results = score_call(transcript)
+        qa_results = score_call(transcript, call_type)
         for section, result in qa_results.items():
             emoji = "✅" if result["score"] == 1 else "❌"
             st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
