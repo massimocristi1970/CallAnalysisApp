@@ -79,11 +79,21 @@ SCORE_PHRASES = {
     ]
 }
 
-def score_call(transcript):
+def score_call(transcript, call_type="Collections"):
     transcript = transcript.lower()
     scores = {}
 
+    # Limit which categories are scored based on call type
+    call_type_map = {
+        "Customer Service": ["Customer Understanding", "Fair Treatment"],
+        "Collections": ["Fair Treatment", "Resolution & Support", "Vulnerability Handling"]
+    }
+    relevant_categories = call_type_map.get(call_type, list(SCORE_PHRASES.keys()))
+
     for category, phrases in SCORE_PHRASES.items():
+        if category not in relevant_categories:
+            continue  # Skip categories not relevant to this call type
+
         count = sum(1 for phrase in phrases if phrase in transcript)
 
         if count == 0:

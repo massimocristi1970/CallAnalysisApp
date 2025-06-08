@@ -12,6 +12,7 @@ from analyser import get_sentiment, find_keywords, score_call  # not score_qa
 
 # Sidebar: Choose Whisper model size
 model_size = st.sidebar.selectbox("Select Whisper model size", ["small", "base"])
+call_type = st.sidebar.selectbox("Select Call Type", ["Customer Service", "Collections"])
 set_model_size(model_size)
 
 st.sidebar.write("GPU available:", torch.cuda.is_available())
@@ -86,7 +87,7 @@ if uploaded_files:
 
         # QA Scoring (FCA-aligned)
         st.subheader("📊 QA Scoring Summary")
-        qa_results = score_call(transcript)
+        qa_results = score_call(transcript, call_type)
         for section, result in qa_results.items():
             emoji = "✅" if result["score"] == 1 else "❌"
             st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
