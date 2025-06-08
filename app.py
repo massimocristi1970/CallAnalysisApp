@@ -8,7 +8,7 @@ import time
 import torch
 import numpy as np
 from transcriber import transcribe_audio, set_model_size
-from analyser import get_sentiment, find_keywords, score_qa
+from analyser import get_sentiment, find_keywords, score_call  # not score_qa
 
 # Sidebar: Choose Whisper model size
 model_size = st.sidebar.selectbox("Select Whisper model size", ["small", "base"])
@@ -86,13 +86,14 @@ if uploaded_files:
 
         # QA Scoring (FCA-aligned)
         st.subheader("📊 QA Scoring Summary")
-        qa_results = score_qa(transcript)
-        for section, result in qa_results.items():
-            emoji = "✅" if result["score"] == 1 else "❌"
-            st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
+        qa_scores = score_call(transcript)
+        for category, score in qa_scores.items():
+            emoji = "✅" if score else "❌"
+            st.markdown(f"- {emoji} **{category}**: {'Passed' if score else 'Not Evident'}")
 
-        total_score = sum(r["score"] for r in qa_results.values())
-        st.markdown(f"### 🏁 Total Score: **{total_score}/8**")
+        total_score = sum(qa_scores.values())
+        st.markdown(f"### 🏁 Total Score: **{total_score}/4**")
+
 
     progress_bar.empty()
 
