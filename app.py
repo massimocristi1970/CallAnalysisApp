@@ -186,7 +186,8 @@ if uploaded_files:
 
 
         pdf_all = BytesIO()
-        combined_pdf.output(pdf_all)
+        pdf_output = combined_pdf.output(dest='S').encode('latin1')
+        pdf_all.write(pdf_output)
         pdf_all.seek(0)
 
         st.download_button(
