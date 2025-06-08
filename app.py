@@ -92,7 +92,7 @@ if uploaded_files:
             st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
 
 
-        total_score = sum(qa_results.values())
+        total_score = sum(result["score"] for result in qa_results.values())
         st.markdown(f"### 🏁 Total Score: **{total_score}/4**")
 
 
@@ -119,11 +119,11 @@ if st.sidebar.checkbox("Run test with sample transcript"):
     else:
         st.markdown("**✅ No key phrases detected (test).**")
 
-    qa_results = score_qa(transcript)
+    qa_results = score_call(transcript)
     st.subheader("📊 QA Scoring Summary (test)")
     for section, result in qa_results.items():
         emoji = "✅" if result["score"] == 1 else "❌"
         st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
     total_score = sum(r["score"] for r in qa_results.values())
-    st.markdown(f"### 🏁 Total Score (test): **{total_score}/8**")
+    st.markdown(f"### 🏁 Total Score (test): **{total_score}/4**")
 
