@@ -48,28 +48,40 @@ def find_keywords(text):
 # ✅ FCA QA Scoring Categories
 def score_call(transcript):
     transcript = transcript.lower()
-    scores = {
-        "Customer Understanding": 0,
-        "Fair Treatment": 0,
-        "Vulnerability Handling": 0,
-        "Resolution & Support": 0
-    }
+    results = {}
 
     # --- Category 1: Customer Understanding ---
-    if any(phrase in transcript for phrase in ["do you understand", "let me explain", "does that make sense", "is that clear"]):
-        scores["Customer Understanding"] = 1
+    phrases = ["do you understand", "let me explain", "does that make sense", "is that clear"]
+    found = any(p in transcript for p in phrases)
+    results["Customer Understanding"] = {
+        "score": int(found),
+        "explanation": "Agent checked for understanding." if found else "No evidence of checking customer understanding."
+    }
 
     # --- Category 2: Fair Treatment ---
-    if any(phrase in transcript for phrase in ["we're here to help", "take your time", "you have options", "we won’t pressure you"]):
-        scores["Fair Treatment"] = 1
+    phrases = ["we're here to help", "take your time", "you have options", "we won’t pressure you"]
+    found = any(p in transcript for p in phrases)
+    results["Fair Treatment"] = {
+        "score": int(found),
+        "explanation": "Fair, non-pressured treatment offered." if found else "No clear reassurance or fair treatment wording detected."
+    }
 
     # --- Category 3: Vulnerability Handling ---
-    if find_keywords(transcript):
-        if any(phrase in transcript for phrase in ["take a note of that", "i’ve flagged that", "we can offer support", "we'll pause things"]):
-            scores["Vulnerability Handling"] = 1
+    keywords_found = find_keywords(transcript)
+    phrases = ["take a note of that", "i’ve flagged that", "we can offer support", "we'll pause things"]
+    flagged = any(p in transcript for p in phrases)
+    results["Vulnerability Handling"] = {
+        "score": int(bool(keywords_found) and flagged),
+        "explanation": "Potential vulnerability identified and acknowledged." if bool(keywords_found) and flagged
+                      else "No clear handling of potential vulnerability."
+    }
 
     # --- Category 4: Resolution & Support ---
-    if any(phrase in transcript for phrase in ["payment plan", "breathing space", "write off", "income and expenditure", "support team"]):
-        scores["Resolution & Support"] = 1
+    phrases = ["payment plan", "breathing space", "write off", "income and expenditure", "support team"]
+    found = any(p in transcript for p in phrases)
+    results["Resolution & Support"] = {
+        "score": int(found),
+        "explanation": "Practical support options were offered." if found else "No support options discussed."
+    }
 
-    return scores
+    return results
