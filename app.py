@@ -92,7 +92,7 @@ if uploaded_files:
             st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
 
 
-        total_score = sum(qa_scores.values())
+        total_score = sum(qa_results.values())
         st.markdown(f"### 🏁 Total Score: **{total_score}/4**")
 
 
