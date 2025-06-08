@@ -11,6 +11,11 @@ from transcriber import transcribe_audio, set_model_size
 from analyser import get_sentiment, find_keywords, score_call  # not score_qa
 from fpdf import FPDF
 from io import BytesIO
+import unicodedata
+
+def clean_text(text):
+    text = unicodedata.normalize("NFKD", text)
+    return text.encode("ascii", "ignore").decode("ascii")
 
 
 # Sidebar: Choose Whisper model size
@@ -29,30 +34,31 @@ def generate_pdf(title, transcript, sentiment, keywords, qa_results):
     pdf.add_page()
     pdf.set_font("Arial", size=12)
 
-    pdf.multi_cell(0, 10, txt=title, align='L')
+    pdf.multi_cell(0, 10, txt=clean_text(title), align='L')
     pdf.ln()
 
     pdf.set_font("Arial", style="B", size=12)
-    pdf.cell(0, 10, "Transcript:", ln=True)
+    pdf.cell(0, 10, clean_text("Transcript:"), ln=True)
     pdf.set_font("Arial", size=12)
-    pdf.multi_cell(0, 10, transcript)
+    pdf.multi_cell(0, 10, clean_text(transcript))
     pdf.ln()
 
     pdf.set_font("Arial", style="B", size=12)
-    pdf.cell(0, 10, f"Sentiment: {sentiment}", ln=True)
+    pdf.cell(0, 10, clean_text(f"Sentiment: {sentiment}"), ln=True)
 
     pdf.set_font("Arial", style="B", size=12)
-    pdf.cell(0, 10, "Keywords:", ln=True)
+    pdf.cell(0, 10, clean_text("Keywords:"), ln=True)
     pdf.set_font("Arial", size=12)
     for kw in sorted(set(keywords)):
-        pdf.cell(0, 10, f"- {kw}", ln=True)
+        pdf.cell(0, 10, clean_text(f"- {kw}"), ln=True)
     pdf.ln()
 
     pdf.set_font("Arial", style="B", size=12)
-    pdf.cell(0, 10, "QA Scoring Summary:", ln=True)
+    pdf.cell(0, 10, clean_text("QA Scoring Summary:"), ln=True)
     pdf.set_font("Arial", size=12)
     for section, result in qa_results.items():
-        pdf.cell(0, 10, f"- {section}: {result['score']} - {result['explanation']}", ln=True)
+        score_line = f"- {section}: {result['score']} - {result['explanation']}"
+        pdf.cell(0, 10, clean_text(score_line), ln=True)
 
     return pdf
 
@@ -163,18 +169,21 @@ if uploaded_files:
         for name, transcript, sentiment, keyword_matches, qa_results in st.session_state["summary_pdfs"]:
             combined_pdf.add_page()
             combined_pdf.set_font("Arial", size=12)
-            combined_pdf.multi_cell(0, 10, txt=f"Call: {name}", align='L')
+           
+            combined_pdf.multi_cell(0, 10, txt=clean_text(f"Call: {name}"), align='L')
             combined_pdf.ln()
-            combined_pdf.multi_cell(0, 10, transcript)
+            combined_pdf.multi_cell(0, 10, clean_text(transcript))
             combined_pdf.ln()
-            combined_pdf.cell(0, 10, f"Sentiment: {sentiment}", ln=True)
-            combined_pdf.cell(0, 10, "Keywords:", ln=True)
+            
+            combined_pdf.cell(0, 10, clean_text(f"Sentiment: {sentiment}"), ln=True)
+            combined_pdf.cell(0, 10, clean_text("Keywords:"), ln=True)
             for kw in sorted(set(m["phrase"] for m in keyword_matches)):
-                combined_pdf.cell(0, 10, f"- {kw}", ln=True)
-            combined_pdf.cell(0, 10, "QA Scoring:", ln=True)
+                combined_pdf.cell(0, 10, clean_text(f"- {kw}"), ln=True)
+            combined_pdf.cell(0, 10, clean_text("QA Scoring:"), ln=True)
             for section, result in qa_results.items():
-                combined_pdf.cell(0, 10, f"- {section}: {result['score']} - {result['explanation']}", ln=True)
+                combined_pdf.cell(0, 10, clean_text(f"- {section}: {result['score']} - {result['explanation']}"), ln=True)
             combined_pdf.ln()
+
 
         pdf_all = BytesIO()
         combined_pdf.output(pdf_all)
@@ -187,8 +196,6 @@ if uploaded_files:
             mime="application/pdf"
         )
 
-
-        
 
 # Test
 if st.sidebar.checkbox("Run test with sample transcript"):
