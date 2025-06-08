@@ -86,10 +86,11 @@ if uploaded_files:
 
         # QA Scoring (FCA-aligned)
         st.subheader("📊 QA Scoring Summary")
-        qa_scores = score_call(transcript)
-        for category, score in qa_scores.items():
-            emoji = "✅" if score else "❌"
-            st.markdown(f"- {emoji} **{category}**: {'Passed' if score else 'Not Evident'}")
+        qa_results = score_call(transcript)
+        for section, result in qa_results.items():
+            emoji = "✅" if result["score"] == 1 else "❌"
+            st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
+
 
         total_score = sum(qa_scores.values())
         st.markdown(f"### 🏁 Total Score: **{total_score}/4**")
