@@ -15,10 +15,6 @@ model_size = st.sidebar.selectbox("Select Whisper model size", ["small", "base"]
 call_type = st.sidebar.selectbox("Select Call Type", ["Customer Service", "Collections"])
 set_model_size(model_size)
 
-st.sidebar.write("GPU available:", torch.cuda.is_available())
-if not torch.cuda.is_available():
-    st.sidebar.warning("⚠️ Running on CPU — transcriptions may take longer.")
-
 st.title("📞 Call Analysis Scorecard")
 
 uploaded_files = st.file_uploader(
