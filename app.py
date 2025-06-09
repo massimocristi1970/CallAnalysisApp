@@ -171,7 +171,7 @@ if uploaded_files:
         )
 
         pdf_bytes = BytesIO()
-        pdf_output = pdf.output(dest='S').encode('latin1')
+        pdf_output = pdf.output(dest='S')
         pdf_bytes.write(pdf_output)
         pdf_bytes.seek(0)
 
@@ -226,7 +226,7 @@ if uploaded_files:
 
 
         pdf_all = BytesIO()
-        pdf_output = combined_pdf.output(dest='S').encode('latin1')
+        pdf_output = pdf.output(dest='S')
         pdf_all.write(pdf_output)
         pdf_all.seek(0)
 
