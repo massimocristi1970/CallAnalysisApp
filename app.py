@@ -29,7 +29,7 @@ uploaded_files = st.file_uploader(
     "Upload call recordings (MP3/WAV)", type=["mp3", "wav"], accept_multiple_files=True
 )
 
-def generate_pdf(title, transcript, sentiment, keywords, qa_results):
+def generate_pdf(title, transcript, sentiment, keywords, qa_results, call_type):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
@@ -65,7 +65,7 @@ def generate_pdf(title, transcript, sentiment, keywords, qa_results):
     pdf.set_font("Arial", style="B", size=12)
     pdf.cell(0, 10, clean_text("NLP-Based QA Scoring:"), ln=True)
     pdf.set_font("Arial", size=12)
-    qa_results_nlp = score_call_nlp(transcript)  # 🔹 Call NLP-based scoring
+    qa_results_nlp = score_call_nlp(transcript, call_type)  # 🔹 Call NLP-based scoring
     for section, result in qa_results_nlp.items():
         line = f"- {section}: {result['score']} - {result['explanation']}"
         pdf.cell(0, 10, clean_text(line), ln=True)
@@ -167,7 +167,7 @@ if uploaded_files:
             transcript=transcript,
             sentiment=sentiment,
             keywords=[m["phrase"] for m in keyword_matches],
-            qa_results=qa_results
+            qa_results=call_type
         )
 
         pdf_bytes = BytesIO()
