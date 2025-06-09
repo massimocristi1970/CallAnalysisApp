@@ -138,7 +138,7 @@ if uploaded_files:
         st.subheader("📊 QA Scoring Summary")
 
         qa_results = score_call(transcript, call_type)
-        qa_results_nlp = score_call_nlp(transcript)
+        qa_results_nlp = score_call_nlp(transcript, call_type)
 
         st.markdown("#### 🔍 Rule-Based Scoring")
         for section, result in qa_results.items():
@@ -218,7 +218,7 @@ if uploaded_files:
             combined_pdf.ln()
 
             # NLP-Based QA Scoring
-            qa_results_nlp = score_call_nlp(transcript)
+            qa_results_nlp = score_call_nlp(transcript, call_type)
             combined_pdf.cell(0, 10, clean_text("NLP-Based QA Scoring:"), ln=True)
             for section, result in qa_results_nlp.items():
                 combined_pdf.cell(0, 10, clean_text(f"- {section}: {result['score']} - {result['explanation']}"), ln=True)
@@ -267,7 +267,7 @@ if st.sidebar.checkbox("Run test with sample transcript"):
     total_score = sum(r["score"] for r in qa_results.values())
     st.markdown(f"### 🏁 Total Score (test): **{total_score}/4**")
 
-    qa_results_nlp = score_call_nlp(transcript)
+    qa_results_nlp = score_call_nlp(transcript, call_type)
 
     st.markdown("---")
     st.subheader("🧠 NLP-Based Scoring Summary (test)")
