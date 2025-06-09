@@ -167,7 +167,7 @@ if uploaded_files:
             transcript=transcript,
             sentiment=sentiment,
             keywords=[m["phrase"] for m in keyword_matches],
-            qa_results=call_type
+            call_type=call_type
         )
 
         pdf_bytes = BytesIO()
