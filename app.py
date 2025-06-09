@@ -267,7 +267,7 @@ if st.sidebar.checkbox("Run test with sample transcript"):
     total_score = sum(r["score"] for r in qa_results.values())
     st.markdown(f"### 🏁 Total Score (test): **{total_score}/4**")
 
-    qa_results_nlp = score_call_nlp(transcript, call_type)
+    qa_results_nlp = score_call_nlp(transcript)
 
     st.markdown("---")
     st.subheader("🧠 NLP-Based Scoring Summary (test)")
