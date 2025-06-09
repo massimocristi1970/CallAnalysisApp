@@ -138,7 +138,7 @@ if uploaded_files:
         st.subheader("📊 QA Scoring Summary")
 
         qa_results = score_call(transcript, call_type)
-        qa_results_nlp = score_call_nlp(transcript, call_type)
+        qa_results_nlp = score_call_nlp(transcript)
 
         st.markdown("#### 🔍 Rule-Based Scoring")
         for section, result in qa_results.items():
