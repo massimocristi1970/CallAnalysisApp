@@ -2,6 +2,46 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import re
 import spacy
 
+# Phrase table for NLP QA Scoring
+nlp_qa_phrase_table = {
+    "Vulnerability": {
+        "Mental Health": [
+            "mental health", "anxiety", "depression", "panic attack", "stress", "mental breakdown",
+            "sectioned", "PTSD", "trauma", "bipolar", "OCD", "ADHD", "autism", "autistic"
+        ],
+        "Physical Health": [
+            "surgery", "operation", "hospital", "in recovery", "terminal illness", "diagnosed with cancer",
+            "chronic pain", "disability", "wheelchair", "seizure", "paralysed", "chemotherapy", "diabetes"
+        ],
+        "Financial Distress": [
+            "lost my job", "redundant", "benefits", "on universal credit", "income dropped", "reduced hours",
+            "can't afford", "financial difficulty", "money problems", "no savings", "rent arrears",
+            "council tax debt", "struggling financially"
+        ]
+    },
+    "Customer Understanding": {
+        "Clarity / Confusion": [
+            "don't understand", "explain again", "confused", "not clear", "what does that mean",
+            "say that again", "repeat that", "I’m not sure", "didn’t get that"
+        ],
+        "Understanding Agreement": [
+            "I understand", "that makes sense", "I get it now", "thank you for explaining",
+            "I see what you mean"
+        ]
+    },
+    "Resolution and Support": {
+        "Help / Support Offered": [
+            "we can help", "let me help", "here’s what we can do", "we will support you",
+            "you have options", "we can look at a plan", "don’t worry", "we’ll sort it", "I’ll check for you"
+        ],
+        "Action Steps or Resolution": [
+            "set up a plan", "arrange a call", "speak to someone", "send an email", "complete the form",
+            "we’ll pause the interest", "we’ll hold the account", "we’ll refer this"
+        ]
+    }
+}
+
+
 nlp = spacy.load("en_core_web_sm")
 
 def extract_nlp_phrases(text):
@@ -15,27 +55,27 @@ def extract_nlp_phrases(text):
         "verbs": list(set(verbs)),
     }
 
-def score_call_nlp(transcript):
-    extracted = extract_nlp_phrases(transcript)
-    scores = {}
+def score_call_nlp(transcript, call_type=None):
+    from collections import defaultdict
+    transcript_lower = transcript.lower()
 
-    # Heuristic scoring: count how many matching terms fall in each category
-    scores["Named Entities"] = {
-        "score": min(len(extracted["entities"]), 3),
-        "explanation": f"{len(extracted['entities'])} named entities detected."
-    }
+    section_scores = {}
+    section_explanations = {}
 
-    scores["Noun Phrases"] = {
-        "score": min(len(extracted["noun_phrases"]) // 5, 3),
-        "explanation": f"{len(extracted['noun_phrases'])} noun phrases detected."
-    }
+    for section, subcats in nlp_qa_phrase_table.items():
+        found = []
+        for subcat, phrases in subcats.items():
+            matches = [p for p in transcript_lower.split() if any(phrase in transcript_lower for phrase in phrases)]
+            if matches:
+                found.extend(matches)
 
-    scores["Verbs Used"] = {
-        "score": min(len(extracted["verbs"]) // 5, 3),
-        "explanation": f"{len(extracted['verbs'])} verbs detected."
-    }
+        score = 1 if found else 0
+        section_scores[section] = {
+            "score": score,
+            "explanation": f"{len(found)} relevant phrase(s) detected: {', '.join(found[:5])}" if found else "No relevant phrases detected."
+        }
 
-    return scores
+    return section_scores
 
 # Sentiment setup
 analyzer = SentimentIntensityAnalyzer()
