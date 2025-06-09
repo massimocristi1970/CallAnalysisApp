@@ -55,27 +55,66 @@ def extract_nlp_phrases(text):
         "verbs": list(set(verbs)),
     }
 
-def score_call_nlp(transcript, call_type=None):
-    from collections import defaultdict
+from fuzzywuzzy import fuzz
+
+def score_call_nlp(transcript, call_type):
     transcript_lower = transcript.lower()
 
-    section_scores = {}
-    section_explanations = {}
+    # Expanded indicators
+    vulnerability_signals = [
+        "mental health", "anxiety", "depression", "stress", "autism", "bipolar",
+        "ptsd", "panic attack", "disability", "overwhelmed", "surgery", "treatment",
+        "prescription", "unwell", "hospital", "doctor", "clinical", "emergency", "trauma"
+    ]
 
-    for section, subcats in nlp_qa_phrase_table.items():
-        found = []
-        for subcat, phrases in subcats.items():
-            matches = [p for p in transcript_lower.split() if any(phrase in transcript_lower for phrase in phrases)]
-            if matches:
-                found.extend(matches)
+    financial_difficulty_signals = [
+        "can't afford", "lost my job", "reduced hours", "behind on bills", "missed payments",
+        "struggling to pay", "payment break", "restructure", "arrears", "need help",
+        "in debt", "repayment issue", "financially difficult", "payday loan", "borrowed money"
+    ]
 
-        score = 1 if found else 0
-        section_scores[section] = {
-            "score": score,
-            "explanation": f"{len(found)} relevant phrase(s) detected: {', '.join(found[:5])}" if found else "No relevant phrases detected."
-        }
+    fairness_signals = [
+        "unfair", "not listened to", "ignored", "rude", "unprofessional", "dismissive",
+        "spoke over me", "wasn't explained", "didn't understand", "felt pressured",
+        "no support", "wasn't helpful"
+    ]
 
-    return section_scores
+    resolution_signals = [
+        "can you help", "need support", "repayment plan", "affordable option", "payment schedule",
+        "freeze interest", "pause payments", "forbearance", "can we agree", "income expenditure"
+    ]
+
+    def match_any(phrases, text, threshold=85):
+        for phrase in phrases:
+            if fuzz.partial_ratio(phrase, text) >= threshold:
+                return True
+        return False
+
+    # Scoring based on fuzzy matches
+    scores = {}
+
+    scores["Vulnerability"] = {
+        "score": 1 if match_any(vulnerability_signals, transcript_lower) else 0,
+        "explanation": "Customer mentioned potential vulnerability." if match_any(vulnerability_signals, transcript_lower) else "No indicators of vulnerability detected."
+    }
+
+    scores["Financial Difficulty"] = {
+        "score": 1 if match_any(financial_difficulty_signals, transcript_lower) else 0,
+        "explanation": "Customer mentioned financial hardship." if match_any(financial_difficulty_signals, transcript_lower) else "No indicators of financial difficulty detected."
+    }
+
+    scores["Fair Treatment"] = {
+        "score": 1 if match_any(fairness_signals, transcript_lower) else 0,
+        "explanation": "Customer may have felt unfairly treated." if match_any(fairness_signals, transcript_lower) else "No clear complaint about treatment."
+    }
+
+    scores["Resolution Support"] = {
+        "score": 1 if match_any(resolution_signals, transcript_lower) else 0,
+        "explanation": "Customer sought support or solutions." if match_any(resolution_signals, transcript_lower) else "No request for support or resolution detected."
+    }
+
+    return scores
+
 
 # Sentiment setup
 analyzer = SentimentIntensityAnalyzer()
