@@ -8,7 +8,7 @@ import time
 import torch
 import numpy as np
 from transcriber import transcribe_audio, set_model_size
-from analyser import get_sentiment, find_keywords, score_call  # not score_qa
+from analyser import get_sentiment, find_keywords, score_call, score_call_nlp
 from fpdf import FPDF
 from io import BytesIO
 import unicodedata
@@ -54,11 +54,22 @@ def generate_pdf(title, transcript, sentiment, keywords, qa_results):
     pdf.ln()
 
     pdf.set_font("Arial", style="B", size=12)
-    pdf.cell(0, 10, clean_text("QA Scoring Summary:"), ln=True)
+    pdf.cell(0, 10, clean_text("Rule-Based QA Scoring:"), ln=True)
     pdf.set_font("Arial", size=12)
     for section, result in qa_results.items():
-        score_line = f"- {section}: {result['score']} - {result['explanation']}"
-        pdf.cell(0, 10, clean_text(score_line), ln=True)
+        line = f"- {section}: {result['score']} - {result['explanation']}"
+        pdf.cell(0, 10, clean_text(line), ln=True)
+
+    pdf.ln()
+
+    pdf.set_font("Arial", style="B", size=12)
+    pdf.cell(0, 10, clean_text("NLP-Based QA Scoring:"), ln=True)
+    pdf.set_font("Arial", size=12)
+    qa_results_nlp = score_call_nlp(transcript)  # 🔹 Call NLP-based scoring
+    for section, result in qa_results_nlp.items():
+        line = f"- {section}: {result['score']} - {result['explanation']}"
+        pdf.cell(0, 10, clean_text(line), ln=True)
+
 
     return pdf
 
@@ -123,16 +134,33 @@ if uploaded_files:
         else:
             st.markdown("**✅ No key phrases detected.**")
 
-        # QA Scoring (FCA-aligned)
+        # QA Scoring (Dual Approach)
         st.subheader("📊 QA Scoring Summary")
+
         qa_results = score_call(transcript, call_type)
+        qa_results_nlp = score_call_nlp(transcript, call_type)
+
+        st.markdown("#### 🔍 Rule-Based Scoring")
         for section, result in qa_results.items():
-            emoji = "✅" if result["score"] == 1 else "❌"
+            emoji = "✅" if result["score"] >= 1 else "❌"
             st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
+
+        total_score = sum(result["score"] for result in qa_results.values())
+        st.markdown(f"**🏁 Total Rule-Based Score: {total_score}/4**")
+
+        st.markdown("---")
+
+        st.markdown("#### 🧠 NLP-Based Scoring")
+        for section, result in qa_results_nlp.items():
+            emoji = "✅" if result["score"] >= 1 else "❌"
+            st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
+
+        total_score_nlp = sum(result["score"] for result in qa_results_nlp.values())
+        st.markdown(f"**🏁 Total NLP-Based Score: {total_score_nlp}/4**")
 
 
         total_score = sum(result["score"] for result in qa_results.values())
-        st.markdown(f"### 🏁 Total Score: **{total_score}/4**")
+
         # Generate and display PDF download button for this call
         pdf = generate_pdf(
             title=f"Call Summary – {uploaded_file.name}",
@@ -159,8 +187,9 @@ if uploaded_files:
         if "summary_pdfs" not in st.session_state:
             st.session_state["summary_pdfs"] = []
 
-        st.session_state["summary_pdfs"].append((uploaded_file.name, transcript, sentiment, keyword_matches, qa_results))
-
+        st.session_state["summary_pdfs"].append((
+            uploaded_file.name, transcript, sentiment, keyword_matches, qa_results, qa_results_nlp
+        ))
 
 
     progress_bar.empty()
@@ -181,10 +210,19 @@ if uploaded_files:
             combined_pdf.cell(0, 10, clean_text("Keywords:"), ln=True)
             for kw in sorted(set(m["phrase"] for m in keyword_matches)):
                 combined_pdf.cell(0, 10, clean_text(f"- {kw}"), ln=True)
-            combined_pdf.cell(0, 10, clean_text("QA Scoring:"), ln=True)
+            # Rule-Based QA Scoring
+            combined_pdf.cell(0, 10, clean_text("Rule-Based QA Scoring:"), ln=True)
             for section, result in qa_results.items():
                 combined_pdf.cell(0, 10, clean_text(f"- {section}: {result['score']} - {result['explanation']}"), ln=True)
+
             combined_pdf.ln()
+
+            # NLP-Based QA Scoring
+            qa_results_nlp = score_call_nlp(transcript)
+            combined_pdf.cell(0, 10, clean_text("NLP-Based QA Scoring:"), ln=True)
+            for section, result in qa_results_nlp.items():
+                combined_pdf.cell(0, 10, clean_text(f"- {section}: {result['score']} - {result['explanation']}"), ln=True)
+
 
 
         pdf_all = BytesIO()
@@ -229,3 +267,15 @@ if st.sidebar.checkbox("Run test with sample transcript"):
     total_score = sum(r["score"] for r in qa_results.values())
     st.markdown(f"### 🏁 Total Score (test): **{total_score}/4**")
 
+    qa_results_nlp = score_call_nlp(transcript, call_type)
+
+    st.markdown("---")
+    st.subheader("🧠 NLP-Based Scoring Summary (test)")
+    for section, result in qa_results_nlp.items():
+        emoji = "✅" if result["score"] == 1 else "❌"
+        st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
+
+    total_score_nlp = sum(r["score"] for r in qa_results_nlp.values())
+    st.markdown(f"### 🧠 Total NLP Score (test): **{total_score_nlp}/4**")
+
+    
