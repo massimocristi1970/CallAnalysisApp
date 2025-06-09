@@ -1,5 +1,41 @@
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import re
+import spacy
+
+nlp = spacy.load("en_core_web_sm")
+
+def extract_nlp_phrases(text):
+    doc = nlp(text)
+    entities = [ent.text.lower() for ent in doc.ents if ent.label_ in {"ORG", "GPE", "PERSON", "NORP", "MONEY", "TIME", "DATE", "EVENT"}]
+    noun_phrases = [chunk.text.lower() for chunk in doc.noun_chunks]
+    verbs = [token.lemma_ for token in doc if token.pos_ == "VERB"]
+    return {
+        "entities": list(set(entities)),
+        "noun_phrases": list(set(noun_phrases)),
+        "verbs": list(set(verbs)),
+    }
+
+def score_call_nlp(transcript):
+    extracted = extract_nlp_phrases(transcript)
+    scores = {}
+
+    # Heuristic scoring: count how many matching terms fall in each category
+    scores["Named Entities"] = {
+        "score": min(len(extracted["entities"]), 3),
+        "explanation": f"{len(extracted['entities'])} named entities detected."
+    }
+
+    scores["Noun Phrases"] = {
+        "score": min(len(extracted["noun_phrases"]) // 5, 3),
+        "explanation": f"{len(extracted['noun_phrases'])} noun phrases detected."
+    }
+
+    scores["Verbs Used"] = {
+        "score": min(len(extracted["verbs"]) // 5, 3),
+        "explanation": f"{len(extracted['verbs'])} verbs detected."
+    }
+
+    return scores
 
 # Sentiment setup
 analyzer = SentimentIntensityAnalyzer()
