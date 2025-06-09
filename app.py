@@ -197,7 +197,7 @@ if uploaded_files:
     # ✅ Combined summary report
     if "summary_pdfs" in st.session_state and st.session_state["summary_pdfs"]:
         combined_pdf = FPDF()
-        for name, transcript, sentiment, keyword_matches, qa_results in st.session_state["summary_pdfs"]:
+        for name, transcript, sentiment, keyword_matches, qa_results, qa_results_nlp in st.session_state["summary_pdfs"]:
             combined_pdf.add_page()
             combined_pdf.set_font("Arial", size=12)
            
