@@ -41,10 +41,8 @@ nlp_qa_phrase_table = {
     }
 }
 
-try:
-    nlp = spacy.load("en_core_web_sm")
-except Exception as e:
-    raise Exception(f"Failed to load SpaCy model 'en_core_web_sm': {str(e)}. Please install it with 'python -m spacy download en_core_web_sm'")
+
+nlp = spacy.load("en_core_web_sm")
 
 def extract_nlp_phrases(text):
     doc = nlp(text)
@@ -61,59 +59,62 @@ from fuzzywuzzy import fuzz
 
 def score_call_nlp(transcript, call_type):
     transcript_lower = transcript.lower()
-    doc = nlp(transcript_lower)
-    
+
+    # Expanded indicators
+    vulnerability_signals = [
+        "mental health", "anxiety", "depression", "stress", "autism", "bipolar",
+        "ptsd", "panic attack", "disability", "overwhelmed", "surgery", "treatment",
+        "prescription", "unwell", "hospital", "doctor", "clinical", "emergency", "trauma"
+    ]
+
+    financial_difficulty_signals = [
+        "can't afford", "lost my job", "reduced hours", "behind on bills", "missed payments",
+        "struggling to pay", "payment break", "restructure", "arrears", "need help",
+        "in debt", "repayment issue", "financially difficult", "payday loan", "borrowed money"
+    ]
+
+    fairness_signals = [
+        "unfair", "not listened to", "ignored", "rude", "unprofessional", "dismissive",
+        "spoke over me", "wasn't explained", "didn't understand", "felt pressured",
+        "no support", "wasn't helpful"
+    ]
+
+    resolution_signals = [
+        "can you help", "need support", "repayment plan", "affordable option", "payment schedule",
+        "freeze interest", "pause payments", "forbearance", "can we agree", "income expenditure"
+    ]
+
     def match_any(phrases, text, threshold=85):
         for phrase in phrases:
             if fuzz.partial_ratio(phrase, text) >= threshold:
-                # Check for negation
-                for token in doc:
-                    if token.text.lower() == phrase and token.head.text.lower() in ["not", "n't", "never"]:
-                        return False  # Negated phrase, skip match
                 return True
         return False
 
+    # Scoring based on fuzzy matches
     scores = {}
-    
-    # Vulnerability scoring using phrase table
-    vuln_phrases = (
-        nlp_qa_phrase_table["Vulnerability"]["Mental Health"] +
-        nlp_qa_phrase_table["Vulnerability"]["Physical Health"] +
-        nlp_qa_phrase_table["Vulnerability"]["Financial Distress"]
-    )
+
     scores["Vulnerability"] = {
-        "score": 1 if match_any(vuln_phrases, transcript_lower) else 0,
-        "explanation": "Customer mentioned potential vulnerability." if match_any(vuln_phrases, transcript_lower) else "No indicators of vulnerability detected."
+        "score": 1 if match_any(vulnerability_signals, transcript_lower) else 0,
+        "explanation": "Customer mentioned potential vulnerability." if match_any(vulnerability_signals, transcript_lower) else "No indicators of vulnerability detected."
     }
-    
-    # Financial Difficulty using phrase table
+
     scores["Financial Difficulty"] = {
-        "score": 1 if match_any(nlp_qa_phrase_table["Vulnerability"]["Financial Distress"], transcript_lower) else 0,
-        "explanation": "Customer mentioned financial hardship." if match_any(nlp_qa_phrase_table["Vulnerability"]["Financial Distress"], transcript_lower) else "No indicators of financial difficulty detected."
+        "score": 1 if match_any(financial_difficulty_signals, transcript_lower) else 0,
+        "explanation": "Customer mentioned financial hardship." if match_any(financial_difficulty_signals, transcript_lower) else "No indicators of financial difficulty detected."
     }
-    
-    # Fair Treatment
-    fairness_signals = [
-        "unfair", "not listened to", "ignored", "rude", "unprofessional", "dismissive",
-        "spoke over me", "wasn't explained", "didn’t understand", "felt pressured",
-        "no support", "wasn't helpful"
-    ]
+
     scores["Fair Treatment"] = {
         "score": 1 if match_any(fairness_signals, transcript_lower) else 0,
         "explanation": "Customer may have felt unfairly treated." if match_any(fairness_signals, transcript_lower) else "No clear complaint about treatment."
     }
-    
-    # Resolution Support using phrase table
-    res_phrases = (
-        nlp_qa_phrase_table["Resolution and Support"]["Help / Support Offered"] +
-        nlp_qa_phrase_table["Resolution and Support"]["Action Steps or Resolution"]
-    )
+
     scores["Resolution Support"] = {
-        "score": 1 if match_any(res_phrases, transcript_lower) else 0,
-        "explanation": "Customer sought support or solutions." if match_any(res_phrases, transcript_lower) else "No request for support or resolution detected."
+        "score": 1 if match_any(resolution_signals, transcript_lower) else 0,
+        "explanation": "Customer sought support or solutions." if match_any(resolution_signals, transcript_lower) else "No request for support or resolution detected."
     }
-    
+
     return scores
+
 
 # Sentiment setup
 analyzer = SentimentIntensityAnalyzer()
@@ -200,7 +201,7 @@ def score_call(transcript, call_type="Collections"):
     # Limit which categories are scored based on call type
     call_type_map = {
         "Customer Service": ["Customer Understanding", "Fair Treatment"],
-        "Collections": ["Customer Understanding", "Fair Treatment", "Resolution & Support", "Vulnerability Handling"]
+        "Collections": ["Fair Treatment", "Resolution & Support", "Vulnerability Handling"]
     }
     relevant_categories = call_type_map.get(call_type, list(SCORE_PHRASES.keys()))
 
