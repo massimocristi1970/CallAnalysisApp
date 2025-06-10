@@ -2,6 +2,7 @@
 from fpdf import FPDF
 from io import BytesIO
 from pypdf import PdfReader, PdfWriter
+import unicodedata  
 
 def sanitize_text(text):
     """Sanitize text for PDF rendering by normalizing and removing unrenderable characters."""
