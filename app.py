@@ -149,13 +149,13 @@ st.download_button(
     mime="application/pdf"
 )
 
-        # Save for combined summary
-        if "summary_pdfs" not in st.session_state:
-            st.session_state["summary_pdfs"] = []
+# Save for combined summary
+if "summary_pdfs" not in st.session_state:
+    st.session_state["summary_pdfs"] = []
 
-        st.session_state["summary_pdfs"].append((
-            uploaded_file.name, transcript, sentiment, keyword_matches, qa_results, qa_results_nlp
-        ))
+st.session_state["summary_pdfs"].append((
+    uploaded_file.name, transcript, sentiment, keyword_matches, qa_results, qa_results_nlp
+))
 
 
     progress_bar.empty()
