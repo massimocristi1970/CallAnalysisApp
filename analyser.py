@@ -42,7 +42,10 @@ nlp_qa_phrase_table = {
 }
 
 
-nlp = spacy.load("en_core_web_sm")
+try:
+    nlp = spacy.load("en_core_web_sm")
+except Exception as e:
+    raise Exception(f"Failed to load SpaCy model 'en_core_web_sm': {str(e)}. Please install it with 'python -m spacy download en_core_web_sm'")
 
 def extract_nlp_phrases(text):
     doc = nlp(text)
@@ -59,60 +62,49 @@ from fuzzywuzzy import fuzz
 
 def score_call_nlp(transcript, call_type):
     transcript_lower = transcript.lower()
-
-    # Expanded indicators
-    vulnerability_signals = [
-        "mental health", "anxiety", "depression", "stress", "autism", "bipolar",
-        "ptsd", "panic attack", "disability", "overwhelmed", "surgery", "treatment",
-        "prescription", "unwell", "hospital", "doctor", "clinical", "emergency", "trauma"
-    ]
-
-    financial_difficulty_signals = [
-        "can't afford", "lost my job", "reduced hours", "behind on bills", "missed payments",
-        "struggling to pay", "payment break", "restructure", "arrears", "need help",
-        "in debt", "repayment issue", "financially difficult", "payday loan", "borrowed money"
-    ]
-
-    fairness_signals = [
-        "unfair", "not listened to", "ignored", "rude", "unprofessional", "dismissive",
-        "spoke over me", "wasn't explained", "didn't understand", "felt pressured",
-        "no support", "wasn't helpful"
-    ]
-
-    resolution_signals = [
-        "can you help", "need support", "repayment plan", "affordable option", "payment schedule",
-        "freeze interest", "pause payments", "forbearance", "can we agree", "income expenditure"
-    ]
-
+    doc = nlp(transcript_lower)
+    
     def match_any(phrases, text, threshold=85):
         for phrase in phrases:
             if fuzz.partial_ratio(phrase, text) >= threshold:
                 return True
         return False
 
-    # Scoring based on fuzzy matches
     scores = {}
-
+    
+    # Vulnerability scoring using phrase table
+    vuln_phrases = (
+        nlp_qa_phrase_table["Vulnerability"]["Mental Health"] +
+        nlp_qa_phrase_table["Vulnerability"]["Physical Health"] +
+        nlp_qa_phrase_table["Vulnerability"]["Financial Distress"]
+    )
     scores["Vulnerability"] = {
-        "score": 1 if match_any(vulnerability_signals, transcript_lower) else 0,
-        "explanation": "Customer mentioned potential vulnerability." if match_any(vulnerability_signals, transcript_lower) else "No indicators of vulnerability detected."
+        "score": 1 if match_any(vuln_phrases, transcript_lower) else 0,
+        "explanation": "Customer mentioned potential vulnerability." if match_any(vuln_phrases, transcript_lower) else "No indicators of vulnerability detected."
     }
-
+    
+    # Financial Difficulty (reusing existing signals for consistency)
     scores["Financial Difficulty"] = {
         "score": 1 if match_any(financial_difficulty_signals, transcript_lower) else 0,
         "explanation": "Customer mentioned financial hardship." if match_any(financial_difficulty_signals, transcript_lower) else "No indicators of financial difficulty detected."
     }
-
+    
+    # Fair Treatment
     scores["Fair Treatment"] = {
         "score": 1 if match_any(fairness_signals, transcript_lower) else 0,
         "explanation": "Customer may have felt unfairly treated." if match_any(fairness_signals, transcript_lower) else "No clear complaint about treatment."
     }
-
+    
+    # Resolution Support using phrase table
+    res_phrases = (
+        nlp_qa_phrase_table["Resolution and Support"]["Help / Support Offered"] +
+        nlp_qa_phrase_table["Resolution and Support"]["Action Steps or Resolution"]
+    )
     scores["Resolution Support"] = {
-        "score": 1 if match_any(resolution_signals, transcript_lower) else 0,
-        "explanation": "Customer sought support or solutions." if match_any(resolution_signals, transcript_lower) else "No request for support or resolution detected."
+        "score": 1 if match_any(res_phrases, transcript_lower) else 0,
+        "explanation": "Customer sought support or solutions." if match_any(res_phrases, transcript_lower) else "No request for support or resolution detected."
     }
-
+    
     return scores
 
 
