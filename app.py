@@ -53,11 +53,17 @@ if uploaded_files:
         try:
             with open(save_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
+        except Exception as e:
+            st.error(f"Failed to save file {uploaded_file.name}: {str(e)}")
+            continue
+        finally:
+            if os.path.exists(save_path):
+                os.remove(save_path)
 
         if not durations:
             st.info("⏳ Estimating time... (processing first file)")
 
-       with st.spinner("Transcribing..."):
+        with st.spinner("Transcribing..."):
             start = time.time()
             transcript = cached_transcribe(save_path)
             duration = time.time() - start
