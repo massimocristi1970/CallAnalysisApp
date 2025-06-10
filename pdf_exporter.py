@@ -1,4 +1,5 @@
 # pdf_exporter.py
+from fpdf import FPDF
 from io import BytesIO
 from pypdf import PdfReader, PdfWriter
 
