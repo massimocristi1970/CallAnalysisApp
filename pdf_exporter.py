@@ -40,7 +40,7 @@ def generate_pdf_report(call_data):
         pdf.set_font("Arial", "", 11)
         pdf.multi_cell(0, 8, call["transcript"])
 
-    return pdf.output(dest="S").encode("latin1")  # Return as bytes
+    return pdf.output(dest="S")  # Return bytes, no latin1 encoding
 
 def generate_combined_pdf_report(pdf_list):
     writer = PdfWriter()
