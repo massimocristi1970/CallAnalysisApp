@@ -19,7 +19,6 @@ def clean_text(text):
     text = unicodedata.normalize("NFKD", text)
     return ftfy.fix_text(text)
 
-
 # Sidebar: Choose Whisper model size
 model_size = st.sidebar.selectbox("Select Whisper model size", ["small", "base"])
 call_type = st.sidebar.selectbox("Select Call Type", ["Customer Service", "Collections"])
@@ -130,59 +129,58 @@ if uploaded_files:
         total_score_nlp = sum(result["score"] for result in qa_results_nlp.values())
         st.markdown(f"**🏁 Total NLP-Based Score: {total_score_nlp}/4**")
 
-
-        total_score = sum(result["score"] for result in qa_results.values())
-
-call_data = [{
-    "filename": uploaded_file.name,
-    "transcript": transcript,
-    "sentiment": sentiment,
-    "keywords": [m["phrase"] for m in keyword_matches],
-    "qa_scores": qa_results,
-    "call_type": call_type
-}]
-pdf_bytes = generate_pdf_report(call_data)
-st.download_button(
-    label="📥 Download PDF for this Call",
-    data=pdf_bytes,
-    file_name=f"{uploaded_file.name}_summary.pdf",
-    mime="application/pdf"
-)
-
-# Save for combined summary
-if "summary_pdfs" not in st.session_state:
-    st.session_state["summary_pdfs"] = []
-
-st.session_state["summary_pdfs"].append((
-    uploaded_file.name, transcript, sentiment, keyword_matches, qa_results, qa_results_nlp
-))
-
-progress_bar.empty()
-
-    # ✅ Combined summary report
-    from pdf_exporter import generate_pdf_report
-if "summary_pdfs" in st.session_state and st.session_state["summary_pdfs"]:
-    call_data = [
-        {
-            "filename": name,
+        # Single-call PDF
+        call_data = [{
+            "filename": uploaded_file.name,
             "transcript": transcript,
             "sentiment": sentiment,
             "keywords": [m["phrase"] for m in keyword_matches],
             "qa_scores": qa_results,
             "call_type": call_type
-        }
-        for name, transcript, sentiment, keyword_matches, qa_results, qa_results_nlp in st.session_state["summary_pdfs"]
-    ]
-    pdf_all = BytesIO()
-    pdf_output = generate_pdf_report(call_data)
-    pdf_all.write(pdf_output)
-    pdf_all.seek(0)
-    st.download_button(
-        label="📄 Download Summary Report (All Calls)",
-        data=pdf_all,
-        file_name="Combined_Call_Summary.pdf",
-        mime="application/pdf"
-    )
+        }]
+        pdf_bytes = generate_pdf_report(call_data)
+        st.download_button(
+            label="📥 Download PDF for this Call",
+            data=pdf_bytes,
+            file_name=f"{uploaded_file.name}_summary.pdf",
+            mime="application/pdf"
+        )
+
+        # Save for combined summary
+        if "summary_pdfs" not in st.session_state:
+            st.session_state["summary_pdfs"] = []
+
+        st.session_state["summary_pdfs"].append((
+            uploaded_file.name, transcript, sentiment, keyword_matches, qa_results, qa_results_nlp
+        ))
+
+    # Clean up progress bar
+    progress_bar.empty()
+
+    # Combined summary report
+    from pdf_exporter import generate_pdf_report
+    if "summary_pdfs" in st.session_state and st.session_state["summary_pdfs"]:
+        call_data = [
+            {
+                "filename": name,
+                "transcript": transcript,
+                "sentiment": sentiment,
+                "keywords": [m["phrase"] for m in keyword_matches],
+                "qa_scores": qa_results,
+                "call_type": call_type
+            }
+            for name, transcript, sentiment, keyword_matches, qa_results, qa_results_nlp in st.session_state["summary_pdfs"]
+        ]
+        pdf_all = BytesIO()
+        pdf_output = generate_pdf_report(call_data)
+        pdf_all.write(pdf_output)
+        pdf_all.seek(0)
+        st.download_button(
+            label="📄 Download Summary Report (All Calls)",
+            data=pdf_all,
+            file_name="Combined_Call_Summary.pdf",
+            mime="application/pdf"
+        )
 
 # Test
 if st.sidebar.checkbox("Run test with sample transcript"):
@@ -217,11 +215,9 @@ if st.sidebar.checkbox("Run test with sample transcript"):
 
     st.markdown("---")
     st.subheader("🧠 NLP-Based Scoring Summary (test)")
-    for section, result in qa_results_nlp.items():
+    for section, result in qa_results_nlp.values():
         emoji = "✅" if result["score"] == 1 else "❌"
         st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
 
     total_score_nlp = sum(r["score"] for r in qa_results_nlp.values())
     st.markdown(f"### 🧠 Total NLP Score (test): **{total_score_nlp}/4**")
-
-    
