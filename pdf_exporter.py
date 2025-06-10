@@ -1,5 +1,7 @@
 # pdf_exporter.py
-from fpdf import FPDF
+from io import BytesIO
+from pypdf import PdfReader, PdfWriter
+
 
 def generate_pdf_report(call_data):
     pdf = FPDF()
@@ -39,3 +41,16 @@ def generate_pdf_report(call_data):
         pdf.multi_cell(0, 8, call["transcript"])
 
     return pdf.output(dest="S").encode("latin1")  # Return as bytes
+
+def generate_combined_pdf_report(pdf_list):
+    writer = PdfWriter()
+    
+    for pdf_bytes in pdf_list:
+        reader = PdfReader(BytesIO(pdf_bytes))
+        for page in reader.pages:
+            writer.add_page(page)
+
+    output_stream = BytesIO()
+    writer.write(output_stream)
+    output_stream.seek(0)
+    return output_stream
