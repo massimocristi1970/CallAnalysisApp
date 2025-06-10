@@ -41,7 +41,6 @@ nlp_qa_phrase_table = {
     }
 }
 
-
 try:
     nlp = spacy.load("en_core_web_sm")
 except Exception as e:
@@ -67,6 +66,10 @@ def score_call_nlp(transcript, call_type):
     def match_any(phrases, text, threshold=85):
         for phrase in phrases:
             if fuzz.partial_ratio(phrase, text) >= threshold:
+                # Check for negation
+                for token in doc:
+                    if token.text.lower() == phrase and token.head.text.lower() in ["not", "n't", "never"]:
+                        return False  # Negated phrase, skip match
                 return True
         return False
 
@@ -83,13 +86,18 @@ def score_call_nlp(transcript, call_type):
         "explanation": "Customer mentioned potential vulnerability." if match_any(vuln_phrases, transcript_lower) else "No indicators of vulnerability detected."
     }
     
-    # Financial Difficulty (reusing existing signals for consistency)
+    # Financial Difficulty using phrase table
     scores["Financial Difficulty"] = {
-        "score": 1 if match_any(financial_difficulty_signals, transcript_lower) else 0,
-        "explanation": "Customer mentioned financial hardship." if match_any(financial_difficulty_signals, transcript_lower) else "No indicators of financial difficulty detected."
+        "score": 1 if match_any(nlp_qa_phrase_table["Vulnerability"]["Financial Distress"], transcript_lower) else 0,
+        "explanation": "Customer mentioned financial hardship." if match_any(nlp_qa_phrase_table["Vulnerability"]["Financial Distress"], transcript_lower) else "No indicators of financial difficulty detected."
     }
     
     # Fair Treatment
+    fairness_signals = [
+        "unfair", "not listened to", "ignored", "rude", "unprofessional", "dismissive",
+        "spoke over me", "wasn't explained", "didn’t understand", "felt pressured",
+        "no support", "wasn't helpful"
+    ]
     scores["Fair Treatment"] = {
         "score": 1 if match_any(fairness_signals, transcript_lower) else 0,
         "explanation": "Customer may have felt unfairly treated." if match_any(fairness_signals, transcript_lower) else "No clear complaint about treatment."
@@ -106,7 +114,6 @@ def score_call_nlp(transcript, call_type):
     }
     
     return scores
-
 
 # Sentiment setup
 analyzer = SentimentIntensityAnalyzer()
