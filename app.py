@@ -157,8 +157,7 @@ st.session_state["summary_pdfs"].append((
     uploaded_file.name, transcript, sentiment, keyword_matches, qa_results, qa_results_nlp
 ))
 
-
-    progress_bar.empty()
+progress_bar.empty()
 
     # ✅ Combined summary report
     from pdf_exporter import generate_pdf_report
