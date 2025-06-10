@@ -3,11 +3,13 @@ import os
 from pydub import AudioSegment
 import tempfile
 
-model = None  # Model will be loaded based on selection in app
+model_cache = {}  # Cache for loaded models
 
 def set_model_size(size):
     global model
-    model = whisper.load_model(size)
+    if size not in model_cache:
+        model_cache[size] = whisper.load_model(size)
+    model = model_cache[size]
 
 def transcribe_audio(file_path):
     try:
