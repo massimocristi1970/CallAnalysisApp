@@ -1,3 +1,9 @@
 streamlit
 openai-whisper
 pydub
+vadersentiment
+spacy
+fuzzywuzzy
+fpdf2
+torch
+numpy
