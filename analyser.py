@@ -201,7 +201,7 @@ def score_call(transcript, call_type="Collections"):
     # Limit which categories are scored based on call type
     call_type_map = {
         "Customer Service": ["Customer Understanding", "Fair Treatment"],
-        "Collections": ["Fair Treatment", "Resolution & Support", "Vulnerability Handling"]
+        "Collections": ["Customer Understanding", "Fair Treatment", "Resolution & Support", "Vulnerability Handling"]
     }
     relevant_categories = call_type_map.get(call_type, list(SCORE_PHRASES.keys()))
 
