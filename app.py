@@ -7,13 +7,11 @@ import os
 import time
 import torch
 import numpy as np
-from io import BytesIO
-import unicodedata
 from transcriber import transcribe_audio, set_model_size
 from analyser import get_sentiment, find_keywords, score_call, score_call_nlp
 from pdf_exporter import generate_pdf_report, generate_combined_pdf_report
 
-# Sidebar: Model and Call Type
+# Sidebar controls
 model_size = st.sidebar.selectbox("Select Whisper model size", ["small", "base"])
 call_type = st.sidebar.selectbox("Select Call Type", ["Customer Service", "Collections"])
 set_model_size(model_size)
@@ -21,57 +19,55 @@ set_model_size(model_size)
 st.title("📞 Call Analysis Scorecard")
 
 uploaded_files = st.file_uploader(
-    "Upload call recordings (MP3/WAV)",
-    type=["mp3", "wav"],
-    accept_multiple_files=True
+    "Upload call recordings (MP3/WAV)", type=["mp3", "wav"], accept_multiple_files=True
 )
 
 if uploaded_files:
     progress_bar = st.progress(0, text="Processing uploaded files...")
     durations = []
 
+    if "summary_pdfs" not in st.session_state:
+        st.session_state["summary_pdfs"] = []
+
     for i, uploaded_file in enumerate(uploaded_files, start=1):
         progress = i / len(uploaded_files)
         progress_bar.progress(progress, text=f"Processing file {i} of {len(uploaded_files)}")
 
         st.markdown("---")
-        st.markdown(f"### 📁 Processing file {i} of {len(uploaded_files)}: `{uploaded_file.name}`")
+        st.markdown(f"### 📁 File: `{uploaded_file.name}`")
 
-        # Save file locally
+        # Save audio locally
         save_path = os.path.join("audio_samples", uploaded_file.name)
         with open(save_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
 
         if not durations:
-            st.info("⏳ Estimating time... (processing first file)")
+            st.info("⏳ Estimating time... (first file)")
 
+        # Transcription
         with st.spinner("Transcribing..."):
             start = time.time()
             transcript = transcribe_audio(save_path)
-            duration = time.time() - start
-            durations.append(duration)
+            durations.append(time.time() - start)
 
-        st.success(f"✅ Transcription completed in {duration:.2f} seconds.")
+        st.success(f"✅ Transcription completed in {durations[-1]:.2f} seconds.")
+        eta = np.mean(durations) * (len(uploaded_files) - i)
+        if eta > 0:
+            st.info(f"⏳ Estimated time remaining: {eta:.0f} seconds")
 
-        avg_duration = np.mean(durations)
-        files_left = len(uploaded_files) - i
-        if files_left > 0:
-            eta = avg_duration * files_left
-            st.info(f"⏳ Estimated time remaining: {eta:.0f} seconds for {files_left} file(s)")
-
-        # Keyword highlighting
+        # Highlight keywords
         keyword_matches = find_keywords(transcript)
         highlighted = transcript
         offset = 0
         for match in keyword_matches:
-            start = match['start'] + offset
-            end = match['end'] + offset
+            start = match["start"] + offset
+            end = match["end"] + offset
             phrase = highlighted[start:end]
             highlight_html = f'<mark style="background-color: #ffff00">{phrase}</mark>'
             highlighted = highlighted[:start] + highlight_html + highlighted[end:]
             offset += len(highlight_html) - len(phrase)
 
-        # Transcript
+        # Display transcript
         st.subheader("📝 Transcript with Highlights")
         st.markdown(highlighted, unsafe_allow_html=True)
 
@@ -89,6 +85,7 @@ if uploaded_files:
 
         # QA Scoring
         st.subheader("📊 QA Scoring Summary")
+
         qa_results = score_call(transcript, call_type)
         qa_results_nlp = score_call_nlp(transcript, call_type)
 
@@ -96,18 +93,18 @@ if uploaded_files:
         for section, result in qa_results.items():
             emoji = "✅" if result["score"] >= 1 else "❌"
             st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
-        total_score = sum(result["score"] for result in qa_results.values())
-        st.markdown(f"**🏁 Total Rule-Based Score: {total_score}/4**")
 
+        st.markdown(f"**🏁 Total Rule-Based Score: {sum(r['score'] for r in qa_results.values())}/4**")
         st.markdown("---")
+
         st.markdown("#### 🧠 NLP-Based Scoring")
         for section, result in qa_results_nlp.items():
             emoji = "✅" if result["score"] >= 1 else "❌"
             st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
-        total_score_nlp = sum(result["score"] for result in qa_results_nlp.values())
-        st.markdown(f"**🏁 Total NLP-Based Score: {total_score_nlp}/4**")
 
-        # Generate PDF for single call
+        st.markdown(f"**🏁 Total NLP-Based Score: {sum(r['score'] for r in qa_results_nlp.values())}/4**")
+
+        # Export individual PDF
         pdf_bytes = generate_pdf_report(
             title=f"Call Summary – {uploaded_file.name}",
             transcript=transcript,
@@ -124,28 +121,29 @@ if uploaded_files:
             mime="application/pdf"
         )
 
-        # Store for combined summary
-        if "summary_pdfs" not in st.session_state:
-            st.session_state["summary_pdfs"] = []
-        st.session_state["summary_pdfs"].append((
-            uploaded_file.name, transcript, sentiment, keyword_matches, qa_results, qa_results_nlp
-        ))
+        # Save for combined PDF
+        st.session_state["summary_pdfs"].append({
+            "filename": uploaded_file.name,
+            "transcript": transcript,
+            "sentiment": sentiment,
+            "keywords": [m["phrase"] for m in keyword_matches],
+            "qa_results": qa_results,
+            "qa_results_nlp": qa_results_nlp
+        })
 
     progress_bar.empty()
 
-    # Combined Summary
+    # Export combined summary
     if st.session_state["summary_pdfs"]:
-        combined_pdf_bytes = generate_combined_pdf_report(
-            st.session_state["summary_pdfs"], call_type
-        )
+        combined_bytes = generate_combined_pdf_report(st.session_state["summary_pdfs"])
         st.download_button(
             label="📄 Download Summary Report (All Calls)",
-            data=combined_pdf_bytes,
+            data=combined_bytes,
             file_name="Combined_Call_Summary.pdf",
             mime="application/pdf"
         )
 
-# Test section
+# Test mode
 if st.sidebar.checkbox("Run test with sample transcript"):
     transcript = (
         "Hello, I’m really struggling to pay. I’ve been in hospital with anxiety and side effects from surgery. "
@@ -171,13 +169,13 @@ if st.sidebar.checkbox("Run test with sample transcript"):
 
     st.subheader("📊 QA Scoring Summary (test)")
     for section, result in qa_results.items():
-        emoji = "✅" if result["score"] == 1 else "❌"
+        emoji = "✅" if result["score"] >= 1 else "❌"
         st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
-    st.markdown(f"### 🏁 Total Score (test): **{sum(r['score'] for r in qa_results.values())}/4**")
+    st.markdown(f"### 🏁 Total Rule-Based Score: {sum(r['score'] for r in qa_results.values())}/4")
 
     st.markdown("---")
     st.subheader("🧠 NLP-Based Scoring Summary (test)")
     for section, result in qa_results_nlp.items():
-        emoji = "✅" if result["score"] == 1 else "❌"
+        emoji = "✅" if result["score"] >= 1 else "❌"
         st.markdown(f"- {emoji} **{section}**: {result['explanation']}")
-    st.markdown(f"### 🧠 Total NLP Score (test): **{sum(r['score'] for r in qa_results_nlp.values())}/4**")
+    st.markdown(f"### 🧠 Total NLP Score: {sum(r['score'] for r in qa_results_nlp.values())}/4")
