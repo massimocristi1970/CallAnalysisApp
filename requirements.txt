@@ -9,3 +9,4 @@ torch
 numpy
 python-Levenshtein
 ftfy
+DejaVuSans.ttf
