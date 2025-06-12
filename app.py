@@ -12,7 +12,7 @@ from analyser import get_sentiment, find_keywords, score_call, score_call_nlp
 from pdf_exporter import generate_pdf_report, generate_combined_pdf_report
 
 # Sidebar controls
-model_size = st.sidebar.selectbox("Select Whisper model size", ["small", "base"])
+model_size = st.sidebar.selectbox("Select Whisper model size", ["medium", "small", "base"])
 call_type = st.sidebar.selectbox("Select Call Type", ["Customer Service", "Collections"])
 set_model_size(model_size)
 
