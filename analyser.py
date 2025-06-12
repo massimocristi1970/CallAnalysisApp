@@ -161,20 +161,27 @@ KEYWORDS = [
     "medical emergency", "emotional support"
 ]
 
-def find_keywords(text):
+from fuzzywuzzy import fuzz
+import re
+
+def find_keywords(text, threshold=85):
     text_lower = text.lower()
     found = []
 
     for phrase in KEYWORDS:
-        pattern = rf"\b{re.escape(phrase.lower())}\b"
-        for match in re.finditer(pattern, text_lower):
-            found.append({
-                "phrase": phrase,
-                "start": match.start(),
-                "end": match.end()
-            })
-
+        phrase_lower = phrase.lower()
+        # Use regex to find all approximate matches
+        for match in re.finditer(r'\b\w[\w\s]+\b', text_lower):
+            chunk = match.group().strip()
+            if fuzz.partial_ratio(phrase_lower, chunk) >= threshold:
+                found.append({
+                    "phrase": phrase,
+                    "start": match.start(),
+                    "end": match.end()
+                })
     return found
+
+
 
 # ✅ FCA QA Scoring Categories
 SCORE_PHRASES = {
@@ -206,24 +213,28 @@ SCORE_PHRASES = {
 
 from fuzzywuzzy import fuzz
 
+def fuzzy_match(phrase, transcript, threshold=85):
+    return any(fuzz.partial_ratio(phrase.lower(), chunk) >= threshold for chunk in transcript.split())
+
 def score_call(transcript, call_type="Collections"):
     transcript_lower = transcript.lower()
     scores = {}
 
+    # Define which categories are relevant for each call type
     call_type_map = {
         "Customer Service": ["Customer Understanding", "Fair Treatment"],
         "Collections": ["Customer Understanding", "Fair Treatment", "Resolution & Support", "Vulnerability Handling"]
     }
     relevant_categories = call_type_map.get(call_type, list(SCORE_PHRASES.keys()))
 
-    def match_fuzzy(phrase_list, text, threshold=85):
-        return sum(1 for phrase in phrase_list if fuzz.partial_ratio(phrase.lower(), text) >= threshold)
-
     for category, phrases in SCORE_PHRASES.items():
         if category not in relevant_categories:
             continue
 
-        count = match_fuzzy(phrases, transcript_lower)
+        count = 0
+        for phrase in phrases:
+            if fuzzy_match(phrase, transcript_lower):
+                count += 1
 
         if count == 0:
             score = 0
