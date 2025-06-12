@@ -60,58 +60,68 @@ from fuzzywuzzy import fuzz
 def score_call_nlp(transcript, call_type):
     transcript_lower = transcript.lower()
 
-    # Expanded indicators
-    vulnerability_signals = [
-        "mental health", "anxiety", "depression", "stress", "autism", "bipolar",
-        "ptsd", "panic attack", "disability", "overwhelmed", "surgery", "treatment",
-        "prescription", "unwell", "hospital", "doctor", "clinical", "emergency", "trauma"
-    ]
-
-    financial_difficulty_signals = [
-        "can't afford", "lost my job", "reduced hours", "behind on bills", "missed payments",
-        "struggling to pay", "payment break", "restructure", "arrears", "need help",
-        "in debt", "repayment issue", "financially difficult", "payday loan", "borrowed money"
-    ]
-
-    fairness_signals = [
-        "unfair", "not listened to", "ignored", "rude", "unprofessional", "dismissive",
-        "spoke over me", "wasn't explained", "didn't understand", "felt pressured",
-        "no support", "wasn't helpful"
-    ]
-
-    resolution_signals = [
-        "can you help", "need support", "repayment plan", "affordable option", "payment schedule",
-        "freeze interest", "pause payments", "forbearance", "can we agree", "income expenditure"
-    ]
-
-    def match_any(phrases, text, threshold=85):
+    def count_matches(phrases, text, threshold=85):
+        match_count = 0
         for phrase in phrases:
-            if fuzz.partial_ratio(phrase, text) >= threshold:
-                return True
-        return False
+            if fuzz.partial_ratio(phrase.lower(), text) >= threshold:
+                match_count += 1
+        return match_count
 
-    # Scoring based on fuzzy matches
+    def score_from_count(count):
+        if count == 0:
+            return 0, "No relevant phrases detected."
+        elif count == 1:
+            return 1, "One relevant phrase detected."
+        elif 2 <= count <= 3:
+            return 2, f"{count} relevant phrases detected."
+        else:
+            return 3, f"{count} relevant phrases detected. Strong evidence of best practice."
+
     scores = {}
 
-    scores["Vulnerability"] = {
-        "score": 1 if match_any(vulnerability_signals, transcript_lower) else 0,
-        "explanation": "Customer mentioned potential vulnerability." if match_any(vulnerability_signals, transcript_lower) else "No indicators of vulnerability detected."
-    }
+    # Vulnerability (all subgroups combined)
+    vuln_phrases = (
+        nlp_qa_phrase_table["Vulnerability"]["Mental Health"] +
+        nlp_qa_phrase_table["Vulnerability"]["Physical Health"] +
+        nlp_qa_phrase_table["Vulnerability"]["Financial Distress"]
+    )
+    count = count_matches(vuln_phrases, transcript_lower)
+    score, explanation = score_from_count(count)
+    scores["Vulnerability"] = {"score": score, "explanation": explanation}
 
-    scores["Financial Difficulty"] = {
-        "score": 1 if match_any(financial_difficulty_signals, transcript_lower) else 0,
-        "explanation": "Customer mentioned financial hardship." if match_any(financial_difficulty_signals, transcript_lower) else "No indicators of financial difficulty detected."
-    }
+    # Financial Difficulty (only that subgroup)
+    fin_phrases = nlp_qa_phrase_table["Vulnerability"]["Financial Distress"]
+    count = count_matches(fin_phrases, transcript_lower)
+    score, explanation = score_from_count(count)
+    scores["Financial Difficulty"] = {"score": score, "explanation": explanation}
 
-    scores["Fair Treatment"] = {
-        "score": 1 if match_any(fairness_signals, transcript_lower) else 0,
-        "explanation": "Customer may have felt unfairly treated." if match_any(fairness_signals, transcript_lower) else "No clear complaint about treatment."
-    }
+    # Customer Understanding (Clarity + Agreement)
+    cust_phrases = (
+        nlp_qa_phrase_table["Customer Understanding"]["Clarity / Confusion"] +
+        nlp_qa_phrase_table["Customer Understanding"]["Understanding Agreement"]
+    )
+    count = count_matches(cust_phrases, transcript_lower)
+    score, explanation = score_from_count(count)
+    scores["Customer Understanding"] = {"score": score, "explanation": explanation}
 
-    scores["Resolution Support"] = {
-        "score": 1 if match_any(resolution_signals, transcript_lower) else 0,
-        "explanation": "Customer sought support or solutions." if match_any(resolution_signals, transcript_lower) else "No request for support or resolution detected."
-    }
+    # Fair Treatment (static list, outside phrase table)
+    fair_treatment_phrases = [
+        "unfair", "not listened to", "ignored", "rude", "unprofessional", "dismissive",
+        "spoke over me", "wasn't explained", "didn’t understand", "felt pressured",
+        "no support", "wasn't helpful"
+    ]
+    count = count_matches(fair_treatment_phrases, transcript_lower)
+    score, explanation = score_from_count(count)
+    scores["Fair Treatment"] = {"score": score, "explanation": explanation}
+
+    # Resolution Support (help + action steps)
+    resolution_phrases = (
+        nlp_qa_phrase_table["Resolution and Support"]["Help / Support Offered"] +
+        nlp_qa_phrase_table["Resolution and Support"]["Action Steps or Resolution"]
+    )
+    count = count_matches(resolution_phrases, transcript_lower)
+    score, explanation = score_from_count(count)
+    scores["Resolution Support"] = {"score": score, "explanation": explanation}
 
     return scores
 
