@@ -9,6 +9,8 @@ def generate_pdf_report(title, transcript, sentiment, keywords, qa_results, qa_r
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     pdf.add_font("DejaVu", "", FONT_PATH, uni=True)
+    pdf.add_font("DejaVu", "B", FONT_PATH, uni=True)  # 🔁 Add bold variant
+
     pdf.set_font("DejaVu", size=12)
 
     # Title
