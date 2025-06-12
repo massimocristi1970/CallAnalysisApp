@@ -151,6 +151,8 @@ if st.sidebar.checkbox("Run test with sample transcript"):
         "Hello, I’m really struggling to pay. I’ve been in hospital with anxiety and side effects from surgery. "
         "I was signed off work. Can you help? I feel vulnerable and might need breathing space. "
         "I want to file a complaint about the last agent who refused to help."
+        "Hi, I’m not sure I really understood the last part — could you go over that again? I’ve been off work recovering from surgery and feeling quite anxious lately. I’m struggling financially after losing my job and I’m behind on rent. Can you help me work out a payment plan or pause things for now? I appreciate you explaining the options clearly. "
+
     )
     st.subheader("Test Transcript")
     st.write(transcript)
