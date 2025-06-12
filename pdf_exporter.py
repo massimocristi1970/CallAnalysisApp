@@ -71,7 +71,7 @@ def generate_pdf_report(title, transcript, sentiment, keywords, qa_results, qa_r
 
     # Output
     pdf_bytes = BytesIO()
-    pdf_bytes.write(pdf.output(dest="S").encode("latin1", "replace"))
+    pdf_bytes.write(pdf.output(dest="S"))
     pdf_bytes.seek(0)
     return pdf_bytes
 
@@ -121,6 +121,6 @@ def generate_combined_pdf_report(call_summaries):
         pdf.ln()
 
     pdf_bytes = BytesIO()
-    pdf_bytes.write(pdf.output(dest="S").encode("latin1", "replace"))
+    pdf_bytes.write(pdf.output(dest="S"))
     pdf_bytes.seek(0)
     return pdf_bytes
