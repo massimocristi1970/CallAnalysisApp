@@ -46,7 +46,7 @@ def generate_pdf_report(title, transcript, sentiment, keywords, qa_results, qa_r
     pdf.set_font("DejaVu", "", 12)
     for section, result in qa_results.items():
         line = f"- {section}: {result['score']} — {result['explanation']}"
-        pdf.multi_cell(0, 10, txt=line)
+        pdf.multi_cell(0, 10, txt=str(line).replace('\n', ' ').replace('\r', ' '), max_line_height=pdf.font_size)
     pdf.ln()
 
     # NLP-Based QA
