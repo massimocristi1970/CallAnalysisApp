@@ -204,22 +204,26 @@ SCORE_PHRASES = {
     ]
 }
 
+from fuzzywuzzy import fuzz
+
 def score_call(transcript, call_type="Collections"):
-    transcript = transcript.lower()
+    transcript_lower = transcript.lower()
     scores = {}
 
-    # Limit which categories are scored based on call type
     call_type_map = {
-        "Customer Service": ["Customer Understanding", "Fair Treatment", "Resolution & Support"],
+        "Customer Service": ["Customer Understanding", "Fair Treatment"],
         "Collections": ["Customer Understanding", "Fair Treatment", "Resolution & Support", "Vulnerability Handling"]
     }
     relevant_categories = call_type_map.get(call_type, list(SCORE_PHRASES.keys()))
 
+    def match_fuzzy(phrase_list, text, threshold=85):
+        return sum(1 for phrase in phrase_list if fuzz.partial_ratio(phrase.lower(), text) >= threshold)
+
     for category, phrases in SCORE_PHRASES.items():
         if category not in relevant_categories:
-            continue  # Skip categories not relevant to this call type
+            continue
 
-        count = sum(1 for phrase in phrases if phrase in transcript)
+        count = match_fuzzy(phrases, transcript_lower)
 
         if count == 0:
             score = 0
