@@ -118,8 +118,10 @@ if uploaded_files:
             label="📥 Download PDF for this Call",
             data=pdf_bytes,
             file_name=f"{uploaded_file.name}_summary.pdf",
-            mime="application/pdf"
+            mime="application/pdf",
+            key=f"download_{i}"  # 👈 ensure uniqueness using loop index
         )
+
 
         # Save for combined PDF
         st.session_state["summary_pdfs"].append({
