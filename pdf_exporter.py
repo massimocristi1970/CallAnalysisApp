@@ -4,6 +4,17 @@ import os
 
 FONT_PATH = os.path.join("fonts", "DejaVuSans.ttf")  # Ensure this exists
 
+def break_long_words(text, max_len=60):  
+    words = text.split()  
+    safe_words = []  
+    for word in words:  
+        if len(word) > max_len:  
+            safe_words.extend([word[i:i+max_len] for i in range(0, len(word), max_len)])  
+        else:  
+            safe_words.append(word)  
+    return ' '.join(safe_words)
+
+
 def generate_pdf_report(title, transcript, sentiment, keywords, qa_results, qa_results_nlp):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -46,7 +57,8 @@ def generate_pdf_report(title, transcript, sentiment, keywords, qa_results, qa_r
     pdf.set_font("DejaVu", "", 12)
     for section, result in qa_results.items():
         line = f"- {section}: {result['score']} — {result['explanation']}"
-        pdf.multi_cell(0, 10, txt=str(line).replace('\n', ' ').replace('\r', ' '), max_line_height=pdf.font_size)
+        safe_line = break_long_words(str(line).replace('\n', ' ').replace('\r', ' '))  
+        pdf.multi_cell(0, 10, txt=safe_line)
     pdf.ln()
 
     # NLP-Based QA
@@ -57,7 +69,7 @@ def generate_pdf_report(title, transcript, sentiment, keywords, qa_results, qa_r
         line = f"- {section}: {result['score']} — {result['explanation']}"
         pdf.multi_cell(0, 10, txt=line)
 
-    # Output to BytesIO
+    # Return as BytesIO
     pdf_bytes = BytesIO()
     pdf_output = pdf.output(dest="S").encode("utf-8")
     pdf_bytes.write(pdf_output)
