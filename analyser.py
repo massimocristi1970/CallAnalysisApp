@@ -1,14 +1,19 @@
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import re
 from fuzzywuzzy import fuzz
-import spacy
 import streamlit as st
+
+# ⚠️ We load spaCy only when needed
+_spacy_nlp = None
+
 
 @st.cache_resource
 def load_spacy_model():
-    return spacy.load("en_core_web_sm")
-
-nlp = load_spacy_model()
+    global _spacy_nlp
+    if _spacy_nlp is None:
+        import spacy
+        _spacy_nlp = spacy.load("en_core_web_sm")
+    return _spacy_nlp
 
 
 # ✅ PHRASE TABLES FOR AGENT BEHAVIOUR SCORING
