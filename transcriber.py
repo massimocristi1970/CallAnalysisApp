@@ -102,13 +102,12 @@ def validate_audio_file(file_path: str) -> Dict[str, Any]:
             'format': file_extension
         }
         
-        # Warnings for long files
+        # Only warn about very long files (over 1 hour)
         if duration_seconds > 3600:  # 1 hour
             validation_result['warnings'].append("File is very long (>1 hour), consider chunking for better performance")
         
-        # Warnings for unusual sample rates
-        if audio.frame_rate < 16000:
-            validation_result['warnings'].append("Low sample rate detected, transcription quality may be reduced")
+        # Removed the low sample rate warning since we automatically fix it
+        # The app upsamples to 16kHz automatically, so no need to warn users
             
     except Exception as e:
         validation_result['valid'] = False
@@ -134,6 +133,7 @@ def preprocess_audio(audio: AudioSegment, config: Dict[str, Any]) -> AudioSegmen
             audio = audio.set_channels(1)
         
         # Ensure consistent sample rate (16kHz is optimal for Whisper)
+        # This automatically fixes low sample rate issues without warning
         target_sample_rate = 16000
         if audio.frame_rate != target_sample_rate:
             audio = audio.set_frame_rate(target_sample_rate)
@@ -173,7 +173,7 @@ def convert_audio_format(file_path: str, target_format: str = 'wav') -> str:
         else:
             audio = AudioSegment.from_file(file_path)
         
-        # Preprocess audio
+        # Preprocess audio (includes automatic upsampling to 16kHz)
         audio = preprocess_audio(audio, config)
         
         # Create temporary file
@@ -254,7 +254,7 @@ def transcribe_audio_parallel(file_path: str, max_workers: int = 2) -> Dict[str,
     needs_chunking = duration_minutes > chunk_duration
     
     try:
-        # Convert audio to optimal format
+        # Convert audio to optimal format (includes automatic upsampling)
         processed_file = convert_audio_format(file_path, 'wav')
         is_temp_file = processed_file != file_path
         
@@ -419,7 +419,7 @@ def transcribe_audio(file_path: str) -> str:
                     transcript += ", Processed in chunks"
                 transcript += "]"
         
-        # Add warnings if any
+        # Add warnings if any (but not sample rate warnings)
         warnings = result.get('warnings', [])
         if warnings:
             transcript += f"\n\n[Warnings: {'; '.join(warnings)}]"
