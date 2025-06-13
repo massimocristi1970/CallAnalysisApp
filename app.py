@@ -24,7 +24,7 @@ from pdf_exporter import generate_pdf_report, generate_combined_pdf_report
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Custom CSS for better UI
+# Improved CSS for better readability
 st.markdown("""
 <style>
     .main-header {
@@ -41,25 +41,40 @@ st.markdown("""
         border-left: 4px solid #1f77b4;
     }
     .warning-box {
-        background-color: #fff3cd;
+        background-color: #fef3e2;
+        color: #8b4513;
         padding: 1rem;
         border-radius: 0.5rem;
-        border-left: 4px solid #ffc107;
+        border-left: 4px solid #ff8c00;
         margin: 1rem 0;
+        font-weight: 500;
     }
     .error-box {
-        background-color: #f8d7da;
+        background-color: #ffeaea;
+        color: #8b0000;
         padding: 1rem;
         border-radius: 0.5rem;
         border-left: 4px solid #dc3545;
         margin: 1rem 0;
+        font-weight: 500;
     }
     .success-box {
-        background-color: #d1edff;
+        background-color: #e8f5e8;
+        color: #0f5132;
         padding: 1rem;
         border-radius: 0.5rem;
         border-left: 4px solid #28a745;
         margin: 1rem 0;
+        font-weight: 500;
+    }
+    .info-box {
+        background-color: #e3f2fd;
+        color: #0d47a1;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #2196f3;
+        margin: 1rem 0;
+        font-weight: 500;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -239,13 +254,13 @@ if uploaded_files:
                     # Show file metadata
                     if show_debug_info and validation['metadata']:
                         metadata = validation['metadata']
-                        col1, col2, col3 = st.columns(3)
-                        with col1:
-                            st.metric("Duration", f"{metadata.get('duration_minutes', 0):.1f} min")
-                        with col2:
-                            st.metric("Sample Rate", f"{metadata.get('sample_rate', 0)} Hz")
-                        with col3:
-                            st.metric("Channels", metadata.get('channels', 0))
+                        st.markdown(
+                            f'<div class="info-box">📊 <strong>File Metadata:</strong><br>'
+                            f'Duration: {metadata.get("duration_minutes", 0):.1f} minutes | '
+                            f'Sample Rate: {metadata.get("sample_rate", 0)} Hz | '
+                            f'Channels: {metadata.get("channels", 0)}</div>',
+                            unsafe_allow_html=True
+                        )
                     
                     # Transcription
                     transcription_start = time.time()
@@ -264,7 +279,7 @@ if uploaded_files:
                         continue
                     
                     st.markdown(
-                        f'<div class="success-box">✅ <strong>Transcription completed in {transcription_time:.1f} seconds</strong></div>',
+                        f'<div class="success-box">✅ <strong>Transcription Completed Successfully</strong><br>Processing time: {transcription_time:.1f} seconds</div>',
                         unsafe_allow_html=True
                     )
                     
@@ -293,17 +308,17 @@ if uploaded_files:
                         end = match["end"] + offset
                         phrase = highlighted[start:end]
                         
-                        # Color code by priority
+                        # Color code by priority - improved colors for better readability
                         color = {
-                            'high_priority': '#ff6b6b',
-                            'medium_priority': '#feca57', 
-                            'low_priority': '#48dbfb'
-                        }.get(match.get('priority', 'medium_priority'), '#feca57')
+                            'high_priority': '#ffcccb',    # Light red
+                            'medium_priority': '#fff2cc',  # Light yellow
+                            'low_priority': '#cce5ff'      # Light blue
+                        }.get(match.get('priority', 'medium_priority'), '#fff2cc')
                         
                         confidence = match.get('confidence', 0)
                         title = f"Confidence: {confidence:.2f}, Priority: {match.get('priority', 'medium')}"
                         
-                        highlight_html = f'<mark style="background-color: {color}; border-radius: 3px; padding: 2px;" title="{title}">{phrase}</mark>'
+                        highlight_html = f'<mark style="background-color: {color}; border-radius: 3px; padding: 2px; color: #333;" title="{title}">{phrase}</mark>'
                         highlighted = highlighted[:start] + highlight_html + highlighted[end:]
                         offset += len(highlight_html) - len(phrase)
                     
@@ -314,12 +329,12 @@ if uploaded_files:
                     # Sentiment analysis
                     sentiment = get_sentiment(transcript)
                     sentiment_color = {
-                        'Positive': 'green',
-                        'Negative': 'red', 
-                        'Neutral': 'gray'
-                    }.get(sentiment, 'gray')
+                        'Positive': '#28a745',
+                        'Negative': '#dc3545', 
+                        'Neutral': '#6c757d'
+                    }.get(sentiment, '#6c757d')
                     
-                    st.markdown(f"**😊 Sentiment:** <span style='color: {sentiment_color}'>{sentiment}</span>", 
+                    st.markdown(f"**😊 Sentiment:** <span style='color: {sentiment_color}; font-weight: bold;'>{sentiment}</span>", 
                                unsafe_allow_html=True)
                     
                     # Enhanced keywords display
@@ -338,10 +353,10 @@ if uploaded_files:
                             if priority in keywords_by_priority:
                                 priority_label = priority.replace('_', ' ').title()
                                 color = {
-                                    'high_priority': 'red',
-                                    'medium_priority': 'orange',
-                                    'low_priority': 'blue'
-                                }.get(priority, 'gray')
+                                    'high_priority': '#dc3545',
+                                    'medium_priority': '#fd7e14',
+                                    'low_priority': '#0d6efd'
+                                }.get(priority, '#6c757d')
                                 
                                 st.markdown(f"**<span style='color: {color}'>{priority_label}</span>:**", 
                                            unsafe_allow_html=True)
