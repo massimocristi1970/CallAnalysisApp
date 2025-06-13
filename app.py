@@ -156,7 +156,7 @@ with st.sidebar.expander("🔬 Advanced Settings"):
     show_debug_info = st.checkbox("Show debug information", value=False)
 
 # Main title
-st.markdown('<h1 class="main-header">📞 Call Analysis Scorecard</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">📞 Savvica</h1>', unsafe_allow_html=True)
 
 # File upload section
 st.subheader("📁 Upload Call Recordings")
