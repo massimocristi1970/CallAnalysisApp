@@ -1,0 +1,212 @@
+# Call Analysis Configuration
+scoring:
+  # Fuzzy matching threshold (0-100)
+  fuzzy_threshold: 80
+  # Semantic similarity threshold (0-1)
+  semantic_threshold: 0.7
+  # Minimum confidence for keyword detection
+  keyword_confidence_threshold: 0.6
+
+# Agent behavior phrases for rule-based scoring
+agent_behaviour_phrases:
+  Customer Understanding:
+    - "do you understand"
+    - "let me explain"
+    - "does that make sense"
+    - "is that clear"
+    - "just to clarify"
+    - "i'll walk you through"
+    - "happy to explain again"
+    - "take your time to understand"
+    - "feel free to ask questions"
+    - "would you like me to repeat"
+    - "explain it simply"
+    - "easy to understand"
+    - "clear explanation"
+    - "any questions so far"
+    - "let me break that down"
+    - "i can rephrase that for you"
+    
+  Fair Treatment:
+    - "we're here to help"
+    - "take your time"
+    - "you have options"
+    - "we won't pressure you"
+    - "we want what's best for you"
+    - "we'll support you"
+    - "no obligation"
+    - "your decision"
+    - "you're in control"
+    - "we'll do our best"
+    - "treat you fairly"
+    - "understand your situation"
+    
+  Vulnerability Handling:
+    - "can I ask if you're okay"
+    - "do you need any support"
+    - "we support mental health"
+    - "are you getting help"
+    - "do you have a medical condition"
+    - "we can pause the account"
+    - "we can send a breathing space form"
+    - "you don't have to explain"
+    - "we understand vulnerability"
+    
+  Financial Difficulty:
+    - "we can set up a plan"
+    - "we can work something out"
+    - "affordable repayment"
+    - "can pause payments"
+    - "need income and expenditure"
+    - "repayment flexibility"
+    - "let's look at options"
+    - "freeze interest"
+    - "we'll be fair"
+    
+  Resolution & Support:
+    - "we'll investigate"
+    - "we'll raise a complaint"
+    - "we can escalate this"
+    - "here's what we'll do"
+    - "next steps"
+    - "i've raised that for you"
+    - "we'll send confirmation"
+
+# NLP concepts for semantic analysis
+nlp_concepts:
+  Customer Understanding:
+    - "explanation"
+    - "clarification"
+    - "understanding"
+    - "comprehension"
+    - "guidance"
+    - "instruction"
+    
+  Fair Treatment:
+    - "fairness"
+    - "respect"
+    - "dignity"
+    - "equality"
+    - "justice"
+    - "consideration"
+    
+  Vulnerability Handling:
+    - "vulnerability"
+    - "support"
+    - "assistance"
+    - "care"
+    - "protection"
+    - "wellbeing"
+    
+  Financial Difficulty:
+    - "affordability"
+    - "flexibility"
+    - "arrangement"
+    - "solution"
+    - "plan"
+    - "option"
+    
+  Resolution & Support:
+    - "resolution"
+    - "solution"
+    - "escalation"
+    - "investigation"
+    - "action"
+    - "follow-up"
+
+# Keywords for detection with confidence scoring
+keywords:
+  high_priority:
+    - "vulnerable"
+    - "complaint"
+    - "suicide"
+    - "harassment"
+    - "threaten"
+    - "scam"
+    - "police"
+    - "terminal"
+    - "cancer"
+    - "sectioned"
+    - "domestic violence"
+    
+  medium_priority:
+    - "mental health"
+    - "depression"
+    - "anxiety"
+    - "stress"
+    - "struggling"
+    - "financial difficulties"
+    - "unable to pay"
+    - "late payment"
+    - "refund"
+    - "collection"
+    - "signed off"
+    - "injury"
+    - "breathing space"
+    - "death"
+    - "diagnosis"
+    - "bipolar"
+    - "PTSD"
+    - "ADHD"
+    - "autism"
+    
+  low_priority:
+    - "manager"
+    - "write off"
+    - "bereavement"
+    - "deaf"
+    - "blind"
+    - "disabled"
+    - "unemployed"
+    - "homeless"
+    - "illness"
+    - "surgery"
+    - "feeling low"
+    - "stressed"
+    - "side effects"
+    - "grieving"
+    - "drug"
+    - "addiction"
+    - "alcohol"
+    - "repossession"
+    - "arrears"
+    - "forbearance"
+
+# Audio processing settings
+audio:
+  supported_formats:
+    - "mp3"
+    - "wav"
+    - "m4a"
+    - "flac"
+    - "aac"
+    - "ogg"
+  max_file_size_mb: 100
+  chunk_duration_minutes: 10
+  normalize_audio: true
+  noise_reduction: true
+
+# Security settings
+security:
+  redact_pii: true
+  secure_temp_files: true
+  auto_cleanup: true
+  encryption_key_file: "encryption.key"
+  
+# PII patterns for redaction
+pii_patterns:
+  phone_numbers:
+    - pattern: '\b(?:\+44\s?)?(?:\(?0\d{4}\)?\s?\d{6}|\(?0\d{3}\)?\s?\d{7})\b'
+      replacement: "[PHONE]"
+  emails:
+    - pattern: '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+      replacement: "[EMAIL]"
+  postcodes:
+    - pattern: '\b[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}\b'
+      replacement: "[POSTCODE]"
+  account_numbers:
+    - pattern: '\b(?:account|acc|ref)(?:\s*(?:number|no|#))?\s*:?\s*\d{6,12}\b'
+      replacement: "[ACCOUNT]"
+  sort_codes:
+    - pattern: '\b\d{2}-\d{2}-\d{2}\b'
+      replacement: "[SORTCODE]"
