@@ -2,6 +2,8 @@ from fpdf import FPDF
 from io import BytesIO
 import textwrap
 import unicodedata
+import streamlit as st
+
 
 def sanitize(text):
     """Convert to ASCII-safe characters only (strip Unicode dashes, quotes, etc.)."""
