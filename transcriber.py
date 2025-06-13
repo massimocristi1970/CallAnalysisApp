@@ -1,14 +1,18 @@
 import whisper
+import streamlit as st
 import os
 from pydub import AudioSegment
 import tempfile
 
-model = None  # Model will be loaded based on selection in app
+@st.cache_resource
+def load_whisper_model(size):
+    return whisper.load_model(size)
+
+model = None  # Cached model will be stored here
 
 def set_model_size(size):
     global model
-    model = whisper.load_model(size)
-
+    model = load_whisper_model(size)
 def transcribe_audio(file_path):
     try:
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
