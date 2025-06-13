@@ -6,42 +6,43 @@ import streamlit as st
 # ⚠️ We load spaCy only when needed
 _spacy_nlp = None
 
-
 @st.cache_resource
 def load_spacy_model():
     global _spacy_nlp
     if _spacy_nlp is None:
-        import spacy
-        _spacy_nlp = spacy.load("en_core_web_sm")
+        try:
+            import spacy
+            _spacy_nlp = spacy.load("en_core_web_sm")
+        except Exception as e:
+            raise Exception(f"Failed to load SpaCy model: {e}. Try: python -m spacy download en_core_web_sm")
     return _spacy_nlp
-
 
 # ✅ PHRASE TABLES FOR AGENT BEHAVIOUR SCORING
 AGENT_BEHAVIOUR_PHRASES = {
     "Customer Understanding": [
         "do you understand", "let me explain", "does that make sense", "is that clear",
-        "just to clarify", "i’ll walk you through", "happy to explain again", "take your time to understand",
+        "just to clarify", "i'll walk you through", "happy to explain again", "take your time to understand",
         "feel free to ask questions", "would you like me to repeat", "explain it simply", "easy to understand",
         "clear explanation", "any questions so far", "let me break that down", "i can rephrase that for you"
     ],
     "Fair Treatment": [
-        "we're here to help", "take your time", "you have options", "we won’t pressure you",
-        "we want what's best for you", "we’ll support you", "no obligation", "your decision",
-        "you’re in control", "we’ll do our best", "treat you fairly", "understand your situation"
+        "we're here to help", "take your time", "you have options", "we won't pressure you",
+        "we want what's best for you", "we'll support you", "no obligation", "your decision",
+        "you're in control", "we'll do our best", "treat you fairly", "understand your situation"
     ],
     "Vulnerability Handling": [
-        "can I ask if you’re okay", "do you need any support", "we support mental health",
+        "can I ask if you're okay", "do you need any support", "we support mental health",
         "are you getting help", "do you have a medical condition", "we can pause the account",
-        "we can send a breathing space form", "you don’t have to explain", "we understand vulnerability"
+        "we can send a breathing space form", "you don't have to explain", "we understand vulnerability"
     ],
     "Financial Difficulty": [
         "we can set up a plan", "we can work something out", "affordable repayment",
         "can pause payments", "need income and expenditure", "repayment flexibility",
-        "let's look at options", "freeze interest", "we’ll be fair"
+        "let's look at options", "freeze interest", "we'll be fair"
     ],
     "Resolution & Support": [
-        "we’ll investigate", "we’ll raise a complaint", "we can escalate this",
-        "here’s what we’ll do", "next steps", "i’ve raised that for you", "we’ll send confirmation"
+        "we'll investigate", "we'll raise a complaint", "we can escalate this",
+        "here's what we'll do", "next steps", "i've raised that for you", "we'll send confirmation"
     ]
 }
 
@@ -66,11 +67,6 @@ nlp_qa_phrase_table = {
 
 # ✅ Sentiment setup
 analyzer = SentimentIntensityAnalyzer()
-
-try:
-    nlp = spacy.load("en_core_web_sm")
-except Exception as e:
-    raise Exception(f"Failed to load SpaCy model: {e}. Try: python -m spacy download en_core_web_sm")
 
 # ✅ Text sentiment analysis
 def get_sentiment(text):
@@ -146,9 +142,14 @@ def score_call_nlp(transcript, call_type):
 
 # ✅ Optional NLP extraction (not currently used in scoring but retained for future use)
 def extract_nlp_phrases(text):
-    doc = nlp(text)
-    return {
-        "entities": list(set(ent.text.lower() for ent in doc.ents)),
-        "noun_phrases": list(set(chunk.text.lower() for chunk in doc.noun_chunks)),
-        "verbs": list(set(token.lemma_ for token in doc if token.pos_ == "VERB"))
-    }
+    try:
+        nlp = load_spacy_model()
+        doc = nlp(text)
+        return {
+            "entities": list(set(ent.text.lower() for ent in doc.ents)),
+            "noun_phrases": list(set(chunk.text.lower() for chunk in doc.noun_chunks)),
+            "verbs": list(set(token.lemma_ for token in doc if token.pos_ == "VERB"))
+        }
+    except Exception as e:
+        print(f"Warning: Could not extract NLP phrases: {e}")
+        return {"entities": [], "noun_phrases": [], "verbs": []}
