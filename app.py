@@ -14,7 +14,7 @@ from pdf_exporter import generate_pdf_report, generate_combined_pdf_report
 # Sidebar controls
 model_size = st.sidebar.selectbox("Select Whisper model size", ["medium", "small", "base"])
 call_type = st.sidebar.selectbox("Select Call Type", ["Customer Service", "Collections"])
-set_model_size(model_size)
+
 
 st.title("📞 Call Analysis Scorecard")
 
@@ -47,6 +47,7 @@ if uploaded_files:
         # Transcription
         with st.spinner("Transcribing..."):
             start = time.time()
+            set_model_size(model_size)
             transcript = transcribe_audio(save_path)
             durations.append(time.time() - start)
 
@@ -104,25 +105,6 @@ if uploaded_files:
 
         st.markdown(f"**🏁 Total NLP-Based Score: {sum(r['score'] for r in qa_results_nlp.values())}/4**")
 
-        # Export individual PDF
-        pdf_bytes = generate_pdf_report(
-            title=f"Call Summary – {uploaded_file.name}",
-            transcript=transcript,
-            sentiment=sentiment,
-            keywords=[m["phrase"] for m in keyword_matches],
-            qa_results=qa_results,
-            qa_results_nlp=qa_results_nlp
-        )
-
-        st.download_button(
-            label="📥 Download PDF for this Call",
-            data=pdf_bytes,
-            file_name=f"{uploaded_file.name}_summary.pdf",
-            mime="application/pdf",
-            key=f"download_{i}"  # 👈 ensure uniqueness using loop index
-        )
-
-
         # Save for combined PDF
         st.session_state["summary_pdfs"].append({
             "filename": uploaded_file.name,
@@ -134,6 +116,29 @@ if uploaded_files:
         })
 
     progress_bar.empty()
+
+    if st.session_state["summary_pdfs"]:
+    st.subheader("📄 Download Individual Call PDFs")
+    for idx, call in enumerate(st.session_state["summary_pdfs"]):
+        with st.expander(f"{call['filename']}"):
+            if st.button(f"Generate PDF for {call['filename']}", key=f"gen_pdf_{idx}"):
+                with st.spinner("Generating PDF..."):
+                    pdf_bytes = generate_pdf_report(
+                        title=f"Call Summary – {call['filename']}",
+                        transcript=call["transcript"],
+                        sentiment=call["sentiment"],
+                        keywords=call["keywords"],
+                        qa_results=call["qa_results"],
+                        qa_results_nlp=call["qa_results_nlp"]
+                    )
+                    st.download_button(
+                        label="📥 Download PDF",
+                        data=pdf_bytes,
+                        file_name=f"{call['filename']}_summary.pdf",
+                        mime="application/pdf",
+                        key=f"download_pdf_{idx}"
+                    )
+
 
     # Export combined summary
     if st.session_state["summary_pdfs"]:
