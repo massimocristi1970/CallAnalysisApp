@@ -5,6 +5,7 @@ st.set_page_config(page_title="Call Analysis Scorecard", layout="wide", initial_
 
 import os
 import time
+import torch
 import numpy as np
 import yaml
 from pathlib import Path
