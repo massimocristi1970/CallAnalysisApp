@@ -1,7 +1,7 @@
 streamlit
 openai-whisper
 pydub
-vadersentiment
+vaderSentiment
 spacy
 fuzzywuzzy
 fpdf2
@@ -9,4 +9,10 @@ torch
 numpy
 python-Levenshtein
 ftfy
-DejaVuSans.ttf
+PyYAML
+scikit-learn
+cryptography
+pathlib
+concurrent.futures
+asyncio
+logging
