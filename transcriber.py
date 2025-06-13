@@ -1,14 +1,14 @@
-import whisper
-import streamlit as st
 import os
+import streamlit as st
 from pydub import AudioSegment
 import tempfile
 
+model = None  # Will hold the Whisper model after it's set
+
 @st.cache_resource
 def load_whisper_model(size):
+    import whisper  # ⏳ Import only when needed
     return whisper.load_model(size)
-
-model = None  # Cached model will be stored here
 
 def set_model_size(size):
     global model
