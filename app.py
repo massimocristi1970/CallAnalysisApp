@@ -29,6 +29,9 @@ if uploaded_files:
     if "summary_pdfs" not in st.session_state:
         st.session_state["summary_pdfs"] = []
 
+    #Load Whisper model only once
+    set_model_size(model_size)
+
     for i, uploaded_file in enumerate(uploaded_files, start=1):
         progress = i / len(uploaded_files)
         progress_bar.progress(progress, text=f"Processing file {i} of {len(uploaded_files)}")
@@ -118,19 +121,19 @@ if uploaded_files:
     progress_bar.empty()
 
     if st.session_state["summary_pdfs"]:
-    st.subheader("📄 Download Individual Call PDFs")
-    for idx, call in enumerate(st.session_state["summary_pdfs"]):
-        with st.expander(f"{call['filename']}"):
-            if st.button(f"Generate PDF for {call['filename']}", key=f"gen_pdf_{idx}"):
-                with st.spinner("Generating PDF..."):
-                    pdf_bytes = generate_pdf_report(
-                        title=f"Call Summary – {call['filename']}",
-                        transcript=call["transcript"],
-                        sentiment=call["sentiment"],
-                        keywords=call["keywords"],
-                        qa_results=call["qa_results"],
-                        qa_results_nlp=call["qa_results_nlp"]
-                    )
+        st.subheader("📄 Download Individual Call PDFs")
+        for idx, call in enumerate(st.session_state["summary_pdfs"]):
+            with st.expander(f"{call['filename']}"):
+                if st.button(f"Generate PDF for {call['filename']}", key=f"gen_pdf_{idx}"):
+                    with st.spinner("Generating PDF..."):
+                        pdf_bytes = generate_pdf_report(
+                            title=f"Call Summary – {call['filename']}",
+                            transcript=call["transcript"],
+                            sentiment=call["sentiment"],
+                            keywords=call["keywords"],
+                            qa_results=call["qa_results"],
+                            qa_results_nlp=call["qa_results_nlp"]
+                        )
                     st.download_button(
                         label="📥 Download PDF",
                         data=pdf_bytes,
