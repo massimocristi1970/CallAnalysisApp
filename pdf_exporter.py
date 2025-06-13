@@ -25,6 +25,7 @@ def wrap_text(text, width=100):
     text = sanitize(text).replace("\n", " ").replace("\r", " ")
     return textwrap.wrap(text, width=width) or ["[Empty or invalid line]"]
 
+@st.cache_data
 def generate_pdf_report(title, transcript, sentiment, keywords, qa_results, qa_results_nlp):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
@@ -76,6 +77,7 @@ def generate_pdf_report(title, transcript, sentiment, keywords, qa_results, qa_r
     return pdf_bytes
 
 
+@st.cache_data
 def generate_combined_pdf_report(call_summaries):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=15)
