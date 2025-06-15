@@ -1,4 +1,5 @@
 @echo off
-cd "C:\Users\Massimo Cristi\OneDrive\Documents\GitHub\CallAnalysisApp"
+cd "C:\Users\Administrator\OneDrive\Documenten\CallAnalysisApp"
 streamlit run app.py
 pause
+
