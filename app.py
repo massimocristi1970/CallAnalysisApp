@@ -20,6 +20,10 @@ from analyser import (
 )
 from pdf_exporter import generate_pdf_report, generate_combined_pdf_report
 
+# Add these two lines after your existing imports
+from database import CallAnalysisDB
+from datetime import date
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -96,8 +100,41 @@ config = get_app_config()
 audio_config = config.get('audio', {})
 security_config = config.get('security', {})
 
+# NEW: Initialize database
+@st.cache_resource
+def init_database():
+    return CallAnalysisDB()
+
+db = init_database()
+
 # Sidebar controls
 st.sidebar.title("⚙️ Configuration")
+
+# NEW: Agent Information Section
+st.sidebar.subheader("👤 Agent Information")
+
+# Agent name input
+agent_name = st.sidebar.text_input(
+    "Agent Name",
+    value="",
+    help="Enter the agent's name for this call (required for database saving)"
+)
+
+# Call date input
+call_date = st.sidebar.date_input(
+    "Call Date",
+    value=date.today(),
+    help="Date when the call took place"
+)
+
+# Department selection
+department = st.sidebar.selectbox(
+    "Department",
+    ["Customer Service", "Collections", "Sales", "Support", "Complaints", "Technical"],
+    help="Agent's department"
+)
+
+st.sidebar.markdown("---")
 
 # Model settings
 st.sidebar.subheader("🤖 Model Settings")
@@ -154,6 +191,13 @@ with st.sidebar.expander("🔬 Advanced Settings"):
     )
     
     show_debug_info = st.checkbox("Show debug information", value=False)
+    
+# NEW: Dashboard Link
+st.sidebar.markdown("---")
+st.sidebar.subheader("📊 Dashboard")
+if st.sidebar.button("🎯 Open Performance Dashboard", type="primary"):
+    st.sidebar.info("💡 Run 'streamlit run dashboard.py --server.port 8503' in a new terminal")
+    st.sidebar.markdown("**Dashboard URL:** http://localhost:8503")    
 
 # Main title
 st.markdown('<h1 class="main-header">📞 Savvica</h1>', unsafe_allow_html=True)
@@ -188,6 +232,28 @@ if uploaded_files:
                 st.write(f"{file.size / (1024*1024):.1f} MB")
             with col3:
                 st.write(file.type or "Unknown")
+                
+                # NEW: Show Recent Analysis History for the current agent
+if agent_name.strip():
+    st.subheader(f"📚 Recent Analysis History - {agent_name}")
+    
+    try:
+        recent_calls = db.get_agent_scores_by_month(agent_name=agent_name)
+        
+        if not recent_calls.empty:
+            latest_month = recent_calls.iloc[0]
+            
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Calls This Month", int(latest_month['total_calls']))
+            with col2:
+                st.metric("Latest Rule Score", f"{latest_month['avg_rule_score']:.3f}")
+            with col3:
+                st.metric("Latest NLP Score", f"{latest_month['avg_nlp_score']:.3f}")
+        else:
+            st.info(f"No previous analysis found for {agent_name}")
+    except Exception as e:
+        logger.error(f"Error loading agent history: {e}")
 
 # Processing section
 if uploaded_files:
@@ -425,17 +491,60 @@ if uploaded_files:
                             
                             st.markdown(f"**Text Complexity Score:** {insights['complexity_score']:.2f}")
                     
-                    # Store results for PDF generation
-                    st.session_state["summary_pdfs"].append({
-                        "filename": uploaded_file.name,
-                        "transcript": transcript,
-                        "sentiment": sentiment,
-                        "keywords": [match["phrase"] for match in keyword_matches],
-                        "qa_results": qa_results,
-                        "qa_results_nlp": qa_results_nlp,
-                        "processing_time": transcription_time,
-                        "metadata": validation.get('metadata', {})
-                    })
+                    # NEW: Save to Database
+                    if agent_name.strip():  # Only save if agent name is provided
+                        try:
+                            # Prepare enhanced call data
+                            call_data = {
+                                "filename": uploaded_file.name,
+                                "call_date": call_date,
+                                "call_type": call_type,
+                                "transcript": transcript,
+                                "sentiment": sentiment,
+                                "keywords": [match["phrase"] for match in keyword_matches],
+                                "keywords_enhanced": keyword_matches,
+                                "qa_results": qa_results,
+                                "qa_results_nlp": qa_results_nlp,
+                                "processing_time": transcription_time,
+                                "metadata": validation.get('metadata', {})
+                            }
+        
+                            # Save to database
+                            call_id = db.save_call_analysis(agent_name, call_data)
+                            st.success(f"✅ Call analysis saved to database (ID: {call_id})")
+        
+                            # Also keep the existing session state for PDF generation
+                            st.session_state["summary_pdfs"].append(call_data)
+        
+                        except Exception as e:
+                            st.error(f"❌ Failed to save to database: {str(e)}")
+                            logger.error(f"Database save error: {e}")
+        
+                            # Still append to session state for PDF generation
+                            st.session_state["summary_pdfs"].append({
+                                "filename": uploaded_file.name,
+                                "transcript": transcript,
+                                "sentiment": sentiment,
+                                "keywords": [match["phrase"] for match in keyword_matches],
+                                "qa_results": qa_results,
+                                "qa_results_nlp": qa_results_nlp,
+                                "processing_time": transcription_time,
+                                "metadata": validation.get('metadata', {})
+                            })
+                    else:
+                        st.warning("⚠️ Agent name not provided - call will not be saved to database")
+    
+                        # Still append to session state for immediate PDF generation
+                        st.session_state["summary_pdfs"].append({
+                            "filename": uploaded_file.name,
+                            "transcript": transcript,
+                            "sentiment": sentiment,
+                            "keywords": [match["phrase"] for match in keyword_matches],
+                            "qa_results": qa_results,
+                            "qa_results_nlp": qa_results_nlp,
+                            "processing_time": transcription_time,
+                            "metadata": validation.get('metadata', {})
+                        })
                     
                 except Exception as e:
                     logger.error(f"Error processing {uploaded_file.name}: {e}")
@@ -621,6 +730,23 @@ if st.sidebar.button("🧹 Clean Temp Files"):
     cleanup_temp_files(st.session_state.get("temp_files", []))
     st.session_state["temp_files"] = []
     st.sidebar.success("Temporary files cleaned up!")
+
+# NEW: Data Management Section
+st.sidebar.markdown("---")
+st.sidebar.subheader("🗄️ Data Management")
+
+# Show database stats
+try:
+    all_agents = db.get_all_agents()
+    dashboard_data = db.get_dashboard_data()
+    overview = dashboard_data.get('overview', {})
+    
+    st.sidebar.metric("Total Agents", len(all_agents))
+    st.sidebar.metric("Total Calls", overview.get('total_calls', 0))
+    
+except Exception as e:
+    st.sidebar.error("Database unavailable")
+    logger.error(f"Database error: {e}")
 
 # Help section
 with st.sidebar.expander("❓ Help & Tips"):
