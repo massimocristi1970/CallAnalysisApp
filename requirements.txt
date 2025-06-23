@@ -33,3 +33,7 @@ cryptography>=41.0.0
 # but specified for clarity
 pathlib2>=2.3.5  # For older Python compatibility
 typing-extensions>=4.0.0  # For type hints
+
+# Dashboard dependencies
+plotly>=5.15.0
+pandas>=2.0.0
