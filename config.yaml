@@ -273,7 +273,7 @@ audio:
     - "aac"
     - "ogg"
   max_file_size_mb: 100
-  chunk_duration_minutes: 10
+  chunk_duration_minutes: 3
   normalize_audio: true
   noise_reduction: true
 

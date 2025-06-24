@@ -21,6 +21,20 @@ logger = logging.getLogger(__name__)
 model = None  # Will hold the Whisper model after it's set
 model_lock = threading.Lock()  # Thread safety for model access
 
+def reset_model():
+    """Reset the Whisper model when it gets corrupted"""
+    global model
+    with model_lock:
+        if model is not None:
+            logger.info("Resetting corrupted Whisper model")
+            del model
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            # Reload the model
+            model = load_whisper_model("base")  # Force base model for stability
+            logger.info("Model reset complete")
+
 def load_config():
     """Load audio configuration"""
     config_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
@@ -385,9 +399,24 @@ def transcribe_chunk(chunk_path: str, model_instance) -> Dict[str, Any]:
         }
 
 def transcribe_audio_parallel(file_path: str, max_workers: int = 2) -> Dict[str, Any]:
-    """Transcribe audio using parallel processing for large files"""
+    """Transcribe audio using parallel processing with enhanced error handling"""
     config = load_config()
-    chunk_duration = config.get('audio', {}).get('chunk_duration_minutes', 10)
+    chunk_duration = config.get('audio', {}).get('chunk_duration_minutes', 5)  # Reduced default
+    
+    # NEW: Force sequential processing for stability
+    max_workers = 1  # Override to force sequential processing
+    
+    # NEW: Check model health before starting
+    global model
+    if model is None:
+        logger.error("Model not loaded before transcription")
+        return {
+            'success': False,
+            'text': '[ERROR] Whisper model not loaded',
+            'metadata': {},
+            'warnings': []
+        }    
+    
     
     # Validate audio file
     validation = validate_audio_file(file_path)
@@ -415,9 +444,42 @@ def transcribe_audio_parallel(file_path: str, max_workers: int = 2) -> Dict[str,
             # Split into chunks
             chunks = chunk_audio(processed_file, chunk_duration)
             
-            # Transcribe chunks in parallel
+            # Transcribe chunks sequentially for stability
             transcripts = []
             all_segments = []
+            failed_chunks = []
+            consecutive_failures = 0
+
+            logger.info(f"Processing {len(chunks)} chunks sequentially")
+            for i, chunk in enumerate(chunks):
+                chunk_id = f"{i+1}/{len(chunks)}"
+    
+                # Reset model if too many consecutive failures
+                if consecutive_failures >= 2:
+                    logger.warning("Too many failures, resetting model")
+                    try:
+                        reset_model()
+                        consecutive_failures = 0
+                    except Exception as reset_error:
+                        logger.error(f"Model reset failed: {reset_error}")
+    
+                result = transcribe_chunk_safe(chunk, model, chunk_id)
+    
+                if result['success']:
+                    transcripts.append(result['text'])
+                    all_segments.extend(result.get('segments', []))
+                    consecutive_failures = 0  # Reset failure counter
+                else:
+                    transcripts.append(result['text'])  # Error message
+                    failed_chunks.append(chunk_id)
+                    consecutive_failures += 1
+                    logger.warning(f"Chunk {chunk_id} failed, consecutive failures: {consecutive_failures}")
+    
+                # Clean up chunk file immediately
+                try:
+                    os.remove(chunk)
+                except:
+                    pass
             
             max_workers = min(max_workers, 2)  # Cap at 2 workers for stability
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
