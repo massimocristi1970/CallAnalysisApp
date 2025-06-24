@@ -606,61 +606,67 @@ def cleanup_temp_files(file_paths: List[str]):
             logger.warning(f"Failed to securely delete {file_path}: {e}")
 
 def transcribe_audio(file_path: str) -> str:
-    """Temporarily using ultra-simple transcription"""
-    return transcribe_ultra_simple(file_path)
+    """Main transcription function with machine-specific fallback"""
+    try:
+        # Check if file exists and is not empty
+        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+            return "[ERROR] File is missing or empty."
+        
+        # Detect if we're on Windows 11 (the problematic machine)
+        import platform
+        is_windows_11 = "Windows-11" in platform.platform()
+        
+        if is_windows_11:
+            # Use ultra-simple transcription for Windows 11
+            logger.info("Windows 11 detected - using simple transcription method")
+            return transcribe_ultra_simple(file_path)
+        else:
+            # Use complex method for other machines (Windows 10, etc.)
+            logger.info("Using standard transcription method")
+            
+            # Use parallel processing for large files
+            result = transcribe_audio_parallel(file_path)
+            
+            if not result['success']:
+                return result['text']  # Return error message
+            
+            # Apply PII redaction if enabled
+            transcript = result['text']
+            config = load_config()
+            if config.get('security', {}).get('redact_pii', False):
+                from analyser import redact_pii
+                transcript = redact_pii(transcript)
+            
+            # Add metadata as comments if available
+            metadata = result.get('metadata', {})
+            if metadata:
+                duration = metadata.get('duration_minutes', 0)
+                if duration > 0:
+                    transcript += f"\n\n[Metadata: Duration: {duration:.1f} minutes"
+                    if result.get('chunked', False):
+                        transcript += ", Processed in chunks"
+                    transcript += "]"
+            
+            # Add warnings if any
+            warnings = result.get('warnings', [])
+            if warnings:
+                transcript += f"\n\n[Warnings: {'; '.join(warnings)}]"
+            
+            return transcript
+        
+    except Exception as e:
+        logger.error(f"Transcription error: {e}")
+        return f"[ERROR] Transcription failed: {str(e)}"
 
-# Async version for future use
+# Keep the async function
 async def transcribe_audio_async(file_path: str) -> str:
     """Async version of transcribe_audio for better performance"""
     loop = asyncio.get_event_loop()
     
-    # Run transcription in thread pool to avoid blocking
     with concurrent.futures.ThreadPoolExecutor() as executor:
         result = await loop.run_in_executor(executor, transcribe_audio, file_path)
     
     return result
-# NEW FUNCTION GOES HERE - ADD THIS:
-def transcribe_with_fresh_model(file_path: str, model_size: str = "base") -> str:
-    """Transcribe with a fresh model instance to avoid corruption"""
-    try:
-        logger.info(f"Loading fresh {model_size} model for transcription")
-        
-        # Clear any existing model from memory
-        global model
-        if model is not None:
-            del model
-            gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-        
-        # Load fresh model
-        import whisper
-        fresh_model = whisper.load_model(model_size, device="cpu")  # Force CPU
-        
-        # Simple single-file transcription (no chunking for now)
-        logger.info(f"Transcribing {file_path} with fresh model")
-        result = fresh_model.transcribe(
-            file_path,
-            fp16=False,
-            verbose=False,
-            language=None
-        )
-        
-        # Clean up model immediately
-        del fresh_model
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        
-        # Reload the global model for the UI
-        model = whisper.load_model(model_size, device="cpu")
-        
-        return result.get('text', '').strip()
-        
-    except Exception as e:
-        logger.error(f"Fresh model transcription failed: {e}")
-        return f"[ERROR] Fresh model transcription failed: {str(e)}"
-        
 def transcribe_large_file_safely(file_path: str) -> str:
     """Handle large files with extra safety measures"""
     try:
