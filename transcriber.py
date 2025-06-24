@@ -10,12 +10,15 @@ import hashlib
 import yaml
 from pathlib import Path
 import logging
+import threading
+import gc
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 model = None  # Will hold the Whisper model after it's set
+model_lock = threading.Lock()  # Thread safety for model access
 
 def load_config():
     """Load audio configuration"""
@@ -213,14 +216,86 @@ def chunk_audio(file_path: str, chunk_duration_minutes: int = 10) -> List[str]:
         return [file_path]  # Return original file if chunking fails
 
 def transcribe_chunk(chunk_path: str, model_instance) -> Dict[str, Any]:
-    """Transcribe a single audio chunk"""
+    """Transcribe a single audio chunk with enhanced error handling and thread safety"""
     try:
-        result = model_instance.transcribe(chunk_path, fp16=False)
+        # Validate chunk file exists and isn't empty
+        if not os.path.exists(chunk_path):
+            return {
+                'success': False,
+                'text': f'[ERROR] Chunk file not found: {chunk_path}',
+                'language': 'unknown',
+                'segments': []
+            }
+        
+        # Check file size (empty files cause the Linear layer error)
+        file_size = os.path.getsize(chunk_path)
+        if file_size == 0:
+            return {
+                'success': False,
+                'text': f'[ERROR] Chunk file is empty: {chunk_path}',
+                'language': 'unknown',
+                'segments': []
+            }
+        
+        # Clear memory before transcription (helps prevent model state issues)
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        # Use thread lock to prevent concurrent model access (this fixes your main error)
+        with model_lock:
+            # Check model is available
+            if model_instance is None:
+                return {
+                    'success': False,
+                    'text': '[ERROR] Model not loaded',
+                    'language': 'unknown', 
+                    'segments': []
+                }
+            
+            # Transcribe with stability parameters
+            result = model_instance.transcribe(
+                chunk_path,
+                fp16=False,      # Disable half precision for stability
+                verbose=False,   # Reduce output noise
+                language=None,   # Auto-detect (can help with model issues)
+                task="transcribe"  # Explicit task
+            )
+        
         return {
             'success': True,
-            'text': result.get('text', ''),
+            'text': result.get('text', '').strip(),
             'language': result.get('language', 'unknown'),
             'segments': result.get('segments', [])
+        }
+        
+    except torch.cuda.OutOfMemoryError as e:
+        # Handle GPU memory errors specifically
+        logger.error(f"CUDA OOM error: {e}")
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        return {
+            'success': False,
+            'text': f'[ERROR] GPU memory error. Try using CPU or smaller chunks.',
+            'language': 'unknown',
+            'segments': []
+        }
+        
+    except Exception as e:
+        # Enhanced error reporting with full details
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Chunk transcription error: {e}")
+        logger.error(f"Full traceback: {error_details}")
+        
+        # More specific error message
+        error_type = type(e).__name__
+        return {
+            'success': False,
+            'text': f'[ERROR] Transcription failed: {str(e)} (Type: {error_type})',
+            'language': 'unknown',
+            'segments': [],
+            'error_type': error_type
         }
     except Exception as e:
         logger.error(f"Chunk transcription failed: {e}")
@@ -266,6 +341,7 @@ def transcribe_audio_parallel(file_path: str, max_workers: int = 2) -> Dict[str,
             transcripts = []
             all_segments = []
             
+            max_workers = min(max_workers, 2)  # Cap at 2 workers for stability
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 future_to_chunk = {
                     executor.submit(transcribe_chunk, chunk, model): chunk 
