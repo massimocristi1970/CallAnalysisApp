@@ -10,12 +10,30 @@ import hashlib
 import yaml
 from pathlib import Path
 import logging
+import torch
+import threading
+import gc
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 model = None  # Will hold the Whisper model after it's set
+model_lock = threading.Lock()  # Thread safety for model access
+
+def reset_model():
+    """Reset the Whisper model when it gets corrupted"""
+    global model
+    with model_lock:
+        if model is not None:
+            logger.info("Resetting corrupted Whisper model")
+            del model
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            # Reload the model
+            model = load_whisper_model("base")  # Force base model for stability
+            logger.info("Model reset complete")
 
 def load_config():
     """Load audio configuration"""
@@ -213,15 +231,164 @@ def chunk_audio(file_path: str, chunk_duration_minutes: int = 10) -> List[str]:
         return [file_path]  # Return original file if chunking fails
 
 def transcribe_chunk(chunk_path: str, model_instance) -> Dict[str, Any]:
-    """Transcribe a single audio chunk"""
+    """Transcribe a single audio chunk with enhanced error handling and thread safety"""
     try:
-        result = model_instance.transcribe(chunk_path, fp16=False)
+        # Validate chunk file exists and isn't empty
+        if not os.path.exists(chunk_path):
+            return {
+                'success': False,
+                'text': f'[ERROR] Chunk file not found: {chunk_path}',
+                'language': 'unknown',
+                'segments': []
+            }
+        
+        # Check file size (empty files cause tensor errors)
+        file_size = os.path.getsize(chunk_path)
+        if file_size == 0:
+            return {
+                'success': False,
+                'text': f'[ERROR] Chunk file is empty: {chunk_path}',
+                'language': 'unknown',
+                'segments': []
+            }
+        
+        # NEW: Check if file is too small (less than 100KB often causes issues)
+        if file_size < 100000:  # 100KB threshold
+            logger.warning(f"Very small chunk file: {chunk_path} ({file_size} bytes)")
+        
+        # NEW: Additional audio validation using pydub
+        try:
+            from pydub import AudioSegment
+            test_audio = AudioSegment.from_file(chunk_path)
+            duration_ms = len(test_audio)
+            
+            # Skip chunks shorter than 0.5 seconds (often cause tensor issues)
+            if duration_ms < 500:
+                return {
+                    'success': False,
+                    'text': f'[ERROR] Chunk too short ({duration_ms}ms): {chunk_path}',
+                    'language': 'unknown',
+                    'segments': []
+                }
+                
+        except Exception as audio_error:
+            return {
+                'success': False,
+                'text': f'[ERROR] Invalid audio chunk: {str(audio_error)}',
+                'language': 'unknown',
+                'segments': []
+            }
+        
+        # Clear memory before transcription
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        # Use thread lock to prevent concurrent model access
+        with model_lock:
+            # Check model is available
+            if model_instance is None:
+                return {
+                    'success': False,
+                    'text': '[ERROR] Model not loaded',
+                    'language': 'unknown', 
+                    'segments': []
+                }
+            
+            # NEW: Try transcription with multiple fallback strategies
+            transcription_attempts = [
+                # Attempt 1: Standard parameters
+                {'fp16': False, 'verbose': False, 'language': None, 'task': 'transcribe'},
+                # Attempt 2: Force English (sometimes helps with tensor issues)
+                {'fp16': False, 'verbose': False, 'language': 'en', 'task': 'transcribe'},
+                # Attempt 3: Minimal parameters
+                {'fp16': False, 'verbose': False}
+            ]
+            
+            last_error = None
+            for attempt_num, params in enumerate(transcription_attempts, 1):
+                try:
+                    logger.info(f"Transcription attempt {attempt_num} for {chunk_path}")
+                    result = model_instance.transcribe(chunk_path, **params)
+                    
+                    # Validate result
+                    if result and 'text' in result:
+                        text = result.get('text', '').strip()
+                        if text:  # Non-empty transcription
+                            return {
+                                'success': True,
+                                'text': text,
+                                'language': result.get('language', 'unknown'),
+                                'segments': result.get('segments', []),
+                                'attempt': attempt_num
+                            }
+                        else:
+                            logger.warning(f"Empty transcription on attempt {attempt_num}")
+                    
+                except Exception as attempt_error:
+                    last_error = attempt_error
+                    logger.warning(f"Attempt {attempt_num} failed: {str(attempt_error)}")
+                    
+                    # Clear cache between attempts
+                    gc.collect()
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    
+                    # Wait briefly between attempts
+                    import time
+                    time.sleep(0.1)
+            
+            # All attempts failed
+            return {
+                'success': False,
+                'text': f'[ERROR] All transcription attempts failed. Last error: {str(last_error)}',
+                'language': 'unknown',
+                'segments': [],
+                'error_type': type(last_error).__name__ if last_error else 'Unknown'
+            }
+        
+    except torch.cuda.OutOfMemoryError as e:
+        logger.error(f"CUDA OOM error: {e}")
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         return {
-            'success': True,
-            'text': result.get('text', ''),
-            'language': result.get('language', 'unknown'),
-            'segments': result.get('segments', [])
+            'success': False,
+            'text': f'[ERROR] GPU memory error. Try using CPU or smaller chunks.',
+            'language': 'unknown',
+            'segments': []
         }
+        
+    except Exception as e:
+        # Enhanced error reporting
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Chunk transcription error: {e}")
+        logger.error(f"Full traceback: {error_details}")
+        
+        # NEW: Check for specific known errors
+        error_msg = str(e)
+        if "reshape tensor" in error_msg:
+            return {
+                'success': False,
+                'text': f'[ERROR] Model tensor error (try smaller chunks or different model): {error_msg}',
+                'language': 'unknown',
+                'segments': []
+            }
+        elif "Linear(in_features=" in error_msg:
+            return {
+                'success': False,  
+                'text': f'[ERROR] Model architecture error (try restarting app): {error_msg}',
+                'language': 'unknown',
+                'segments': []
+            }
+        else:
+            return {
+                'success': False,
+                'text': f'[ERROR] Transcription failed: {str(e)}',
+                'language': 'unknown',
+                'segments': [],
+                'error_type': type(e).__name__
+            }
     except Exception as e:
         logger.error(f"Chunk transcription failed: {e}")
         return {
@@ -232,9 +399,24 @@ def transcribe_chunk(chunk_path: str, model_instance) -> Dict[str, Any]:
         }
 
 def transcribe_audio_parallel(file_path: str, max_workers: int = 2) -> Dict[str, Any]:
-    """Transcribe audio using parallel processing for large files"""
+    """Transcribe audio using parallel processing with enhanced error handling"""
     config = load_config()
-    chunk_duration = config.get('audio', {}).get('chunk_duration_minutes', 10)
+    chunk_duration = config.get('audio', {}).get('chunk_duration_minutes', 5)  # Reduced default
+    
+    # NEW: Force sequential processing for stability
+    max_workers = 1  # Override to force sequential processing
+    
+    # NEW: Check model health before starting
+    global model
+    if model is None:
+        logger.error("Model not loaded before transcription")
+        return {
+            'success': False,
+            'text': '[ERROR] Whisper model not loaded',
+            'metadata': {},
+            'warnings': []
+        }    
+    
     
     # Validate audio file
     validation = validate_audio_file(file_path)
@@ -262,10 +444,44 @@ def transcribe_audio_parallel(file_path: str, max_workers: int = 2) -> Dict[str,
             # Split into chunks
             chunks = chunk_audio(processed_file, chunk_duration)
             
-            # Transcribe chunks in parallel
+            # Transcribe chunks sequentially for stability
             transcripts = []
             all_segments = []
+            failed_chunks = []
+            consecutive_failures = 0
+
+            logger.info(f"Processing {len(chunks)} chunks sequentially")
+            for i, chunk in enumerate(chunks):
+                chunk_id = f"{i+1}/{len(chunks)}"
+    
+                # Reset model if too many consecutive failures
+                if consecutive_failures >= 2:
+                    logger.warning("Too many failures, resetting model")
+                    try:
+                        reset_model()
+                        consecutive_failures = 0
+                    except Exception as reset_error:
+                        logger.error(f"Model reset failed: {reset_error}")
+    
+                result = transcribe_chunk_safe(chunk, model, chunk_id)
+    
+                if result['success']:
+                    transcripts.append(result['text'])
+                    all_segments.extend(result.get('segments', []))
+                    consecutive_failures = 0  # Reset failure counter
+                else:
+                    transcripts.append(result['text'])  # Error message
+                    failed_chunks.append(chunk_id)
+                    consecutive_failures += 1
+                    logger.warning(f"Chunk {chunk_id} failed, consecutive failures: {consecutive_failures}")
+    
+                # Clean up chunk file immediately
+                try:
+                    os.remove(chunk)
+                except:
+                    pass
             
+            max_workers = min(max_workers, 2)  # Cap at 2 workers for stability
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 future_to_chunk = {
                     executor.submit(transcribe_chunk, chunk, model): chunk 
@@ -390,58 +606,9 @@ def cleanup_temp_files(file_paths: List[str]):
             logger.warning(f"Failed to securely delete {file_path}: {e}")
 
 def transcribe_audio(file_path: str) -> str:
-    """Main transcription function with machine-specific fallback"""
-    try:
-        # Check if file exists and is not empty
-        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-            return "[ERROR] File is missing or empty."
-        
-        # Detect if we're on Windows 11 (the problematic machine)
-        import platform
-        is_windows_11 = "Windows-11" in platform.platform()
-        
-        if is_windows_11:
-            # Use ultra-simple transcription for Windows 11
-            logger.info("Windows 11 detected - using simple transcription method")
-            return transcribe_ultra_simple(file_path)
-        else:
-            # Use complex method for other machines (Windows 10, etc.)
-            logger.info("Using standard transcription method")
-            
-            # Use parallel processing for large files
-            result = transcribe_audio_parallel(file_path)
-            
-            if not result['success']:
-                return result['text']  # Return error message
-            
-            # Apply PII redaction if enabled
-            transcript = result['text']
-            config = load_config()
-            if config.get('security', {}).get('redact_pii', False):
-                from analyser import redact_pii
-                transcript = redact_pii(transcript)
-            
-            # Add metadata as comments if available
-            metadata = result.get('metadata', {})
-            if metadata:
-                duration = metadata.get('duration_minutes', 0)
-                if duration > 0:
-                    transcript += f"\n\n[Metadata: Duration: {duration:.1f} minutes"
-                    if result.get('chunked', False):
-                        transcript += ", Processed in chunks"
-                    transcript += "]"
-            
-            # Add warnings if any
-            warnings = result.get('warnings', [])
-            if warnings:
-                transcript += f"\n\n[Warnings: {'; '.join(warnings)}]"
-            
-            return transcript
-        
-    except Exception as e:
-        logger.error(f"Transcription error: {e}")
-        return f"[ERROR] Transcription failed: {str(e)}"
-        
+    """Temporarily using ultra-simple transcription"""
+    return transcribe_ultra_simple(file_path)
+
 # Async version for future use
 async def transcribe_audio_async(file_path: str) -> str:
     """Async version of transcribe_audio for better performance"""
@@ -452,3 +619,136 @@ async def transcribe_audio_async(file_path: str) -> str:
         result = await loop.run_in_executor(executor, transcribe_audio, file_path)
     
     return result
+# NEW FUNCTION GOES HERE - ADD THIS:
+def transcribe_with_fresh_model(file_path: str, model_size: str = "base") -> str:
+    """Transcribe with a fresh model instance to avoid corruption"""
+    try:
+        logger.info(f"Loading fresh {model_size} model for transcription")
+        
+        # Clear any existing model from memory
+        global model
+        if model is not None:
+            del model
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        
+        # Load fresh model
+        import whisper
+        fresh_model = whisper.load_model(model_size, device="cpu")  # Force CPU
+        
+        # Simple single-file transcription (no chunking for now)
+        logger.info(f"Transcribing {file_path} with fresh model")
+        result = fresh_model.transcribe(
+            file_path,
+            fp16=False,
+            verbose=False,
+            language=None
+        )
+        
+        # Clean up model immediately
+        del fresh_model
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        # Reload the global model for the UI
+        model = whisper.load_model(model_size, device="cpu")
+        
+        return result.get('text', '').strip()
+        
+    except Exception as e:
+        logger.error(f"Fresh model transcription failed: {e}")
+        return f"[ERROR] Fresh model transcription failed: {str(e)}"
+        
+def transcribe_large_file_safely(file_path: str) -> str:
+    """Handle large files with extra safety measures"""
+    try:
+        # Convert to optimal format first
+        processed_file = convert_audio_format(file_path, 'wav')
+        
+        # Create smaller chunks (2 minutes each)
+        chunks = chunk_audio(processed_file, 2)  # 2-minute chunks
+        
+        if not chunks:
+            return "[ERROR] Failed to create audio chunks"
+        
+        logger.info(f"Processing {len(chunks)} chunks with fresh models")
+        transcripts = []
+        
+        # Process each chunk with fresh model
+        for i, chunk_path in enumerate(chunks):
+            chunk_id = f"{i+1}/{len(chunks)}"
+            logger.info(f"Processing chunk {chunk_id}")
+            
+            try:
+                # Use fresh model for each chunk
+                chunk_text = transcribe_with_fresh_model(chunk_path, "base")
+                
+                if not chunk_text.startswith("[ERROR]"):
+                    transcripts.append(chunk_text)
+                else:
+                    logger.warning(f"Chunk {chunk_id} failed: {chunk_text}")
+                    transcripts.append(f"[Chunk {chunk_id} failed]")
+                    
+            except Exception as chunk_error:
+                logger.error(f"Chunk {chunk_id} error: {chunk_error}")
+                transcripts.append(f"[Chunk {chunk_id} error: {str(chunk_error)}]")
+            
+            finally:
+                # Clean up chunk file
+                try:
+                    os.remove(chunk_path)
+                except:
+                    pass
+        
+        # Clean up processed file
+        if processed_file != file_path:
+            try:
+                os.remove(processed_file)
+            except:
+                pass
+        
+        # Combine results
+        full_transcript = ' '.join(filter(lambda x: not x.startswith('[ERROR]') and not x.startswith('[Chunk'), transcripts))
+        
+        if not full_transcript.strip():
+            return "[ERROR] No successful transcriptions from any chunks"
+        
+        return full_transcript
+        
+    except Exception as e:
+        logger.error(f"Large file transcription failed: {e}")
+        return f"[ERROR] Large file processing failed: {str(e)}"
+        
+def transcribe_ultra_simple(file_path: str) -> str:
+    """Ultra-simple transcription with no fancy features"""
+    try:
+        import whisper
+        import os
+        
+        # Check file exists
+        if not os.path.exists(file_path):
+            return "[ERROR] File not found"
+        
+        # Load model fresh every time
+        print(f"Loading base model for {file_path}")
+        model = whisper.load_model("base", device="cpu")
+        
+        # Basic transcription - no parameters
+        print(f"Starting transcription...")
+        result = model.transcribe(file_path)
+        
+        # Get text
+        text = result.get("text", "").strip()
+        
+        # Clean up
+        del model
+        
+        if not text:
+            return "[ERROR] No text transcribed"
+        
+        return text
+        
+    except Exception as e:
+        return f"[ERROR] Ultra-simple transcription failed: {str(e)}"

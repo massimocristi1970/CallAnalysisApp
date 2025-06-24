@@ -476,20 +476,20 @@ if uploaded_files:
                     
                     # NLP Insights (if debug mode is enabled)
                     if show_debug_info:
-                        with st.expander("🔬 Advanced NLP Insights", expanded=False):
-                            insights = extract_nlp_insights(transcript)
-                            
-                            if insights['entities']:
-                                st.markdown("**Named Entities:**")
-                                for entity in insights['entities'][:10]:  # Limit to first 10
-                                    st.markdown(f"- {entity['text']} ({entity['label']})")
-                            
-                            if insights['emotional_indicators']:
-                                st.markdown("**Emotional Indicators:**")
-                                for indicator in insights['emotional_indicators'][:5]:  # Limit to first 5
-                                    st.markdown(f"- {indicator['word']}: {indicator['context']}")
-                            
-                            st.markdown(f"**Text Complexity Score:** {insights['complexity_score']:.2f}")
+                        st.subheader("🔬 Advanced NLP Insights")  # ← CHANGED THIS LINE
+                        insights = extract_nlp_insights(transcript)
+    
+                        if insights['entities']:
+                            st.markdown("**Named Entities:**")
+                            for entity in insights['entities'][:10]:  # Limit to first 10
+                                st.markdown(f"- {entity['text']} ({entity['label']})")
+    
+                        if insights['emotional_indicators']:
+                            st.markdown("**Emotional Indicators:**")
+                            for indicator in insights['emotional_indicators'][:5]:  # Limit to first 5
+                                st.markdown(f"- {indicator['word']}: {indicator['context']}")
+    
+                        st.markdown(f"**Text Complexity Score:** {insights['complexity_score']:.2f}")
                     
                     # NEW: Save to Database
                     if agent_name.strip():  # Only save if agent name is provided
@@ -692,9 +692,9 @@ if st.sidebar.checkbox("🧪 Test Mode"):
             
             # Advanced insights in test mode
             if show_debug_info:
-                with st.expander("🔬 Test NLP Insights", expanded=False):
-                    insights = extract_nlp_insights(test_transcript)
-                    st.json(insights)
+                st.subheader("🔬 Test NLP Insights")
+                insights = extract_nlp_insights(test_transcript)
+                st.json(insights)
 
 # Footer with system information
 st.sidebar.markdown("---")

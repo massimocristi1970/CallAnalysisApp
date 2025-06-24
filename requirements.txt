@@ -1,5 +1,6 @@
-# Call Analysis App - Tested Requirements for Python 3.12
-# Last updated: 2025-06-13
+# Call Analysis App - Updated Requirements for Python 3.11-3.12
+# Last updated: 2025-06-24
+# Fixed PyTorch compatibility issues and added stability improvements
 
 # Core Streamlit App
 streamlit>=1.28.0
@@ -8,8 +9,12 @@ streamlit>=1.28.0
 openai-whisper>=20231117
 pydub>=0.25.1
 
-# Machine Learning & NLP
-torch>=2.2.0
+# Machine Learning & NLP - FIXED PYTORCH VERSIONS FOR STABILITY
+# Install PyTorch CPU version separately with:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+torch>=2.0.0,<2.3.0
+torchvision>=0.15.0,<0.18.0  
+torchaudio>=2.0.0,<2.3.0
 numpy>=1.21.0,<2.0.0  # Critical: NumPy 2.x breaks PyTorch compatibility
 vaderSentiment>=3.3.2
 spacy>=3.7.0
@@ -17,7 +22,7 @@ scikit-learn>=1.3.0
 
 # Text Processing & Matching
 fuzzywuzzy>=0.18.0
-python-Levenshtein>=0.21.0
+python-Levenshtein>=0.21.0  # Fixes fuzzywuzzy performance warning
 ftfy>=6.1.1
 
 # Configuration & Data
@@ -29,11 +34,19 @@ fpdf2>=2.7.6
 # Security (Optional - can be disabled if installation issues)
 cryptography>=41.0.0
 
+# Threading and Performance
+threading-utils>=0.3.0  # For improved thread safety
+
 # Additional dependencies that may be auto-installed
 # but specified for clarity
-pathlib2>=2.3.5  # For older Python compatibility
+pathlib2>=2.3.5  # For older Python compatibility (Python <3.8)
 typing-extensions>=4.0.0  # For type hints
 
 # Dashboard dependencies
 plotly>=5.15.0
 pandas>=2.0.0
+
+# Development and debugging tools (optional)
+# Uncomment if needed for debugging
+# memory-profiler>=0.60.0
+# psutil>=5.9.0

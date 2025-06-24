@@ -8,7 +8,13 @@ import streamlit as st
 import numpy as np
 from typing import Dict, List, Tuple, Any
 import hashlib
-from cryptography.fernet import Fernet
+try:
+    from cryptography.fernet import Fernet
+    CRYPTOGRAPHY_AVAILABLE = True
+except ImportError:
+    CRYPTOGRAPHY_AVAILABLE = False
+    Fernet = None
+    print("Warning: cryptography module not available. Security features disabled.")
 
 # Global variables
 _spacy_nlp = None
@@ -47,21 +53,29 @@ def load_spacy_model():
 def init_encryption():
     """Initialize encryption for secure file handling"""
     global _cipher_suite
+    if not CRYPTOGRAPHY_AVAILABLE:
+        print("Warning: Encryption not available (cryptography module not installed)")
+        return None
+        
     if _cipher_suite is None:
         config = load_config()
         key_file = config.get('security', {}).get('encryption_key_file', 'encryption.key')
         
-        if not os.path.exists(key_file):
-            # Generate new key
-            key = Fernet.generate_key()
-            with open(key_file, 'wb') as f:
-                f.write(key)
-        else:
-            # Load existing key
-            with open(key_file, 'rb') as f:
-                key = f.read()
-        
-        _cipher_suite = Fernet(key)
+        try:
+            if not os.path.exists(key_file):
+                # Generate new key
+                key = Fernet.generate_key()
+                with open(key_file, 'wb') as f:
+                    f.write(key)
+            else:
+                # Load existing key
+                with open(key_file, 'rb') as f:
+                    key = f.read()
+            
+            _cipher_suite = Fernet(key)
+        except Exception as e:
+            print(f"Warning: Could not initialize encryption: {e}")
+            return None
     return _cipher_suite
 
 # Sentiment setup
