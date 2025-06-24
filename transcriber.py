@@ -606,41 +606,23 @@ def cleanup_temp_files(file_paths: List[str]):
             logger.warning(f"Failed to securely delete {file_path}: {e}")
 
 def transcribe_audio(file_path: str) -> str:
-    """Main transcription function with enhanced error handling and security"""
+    """Main transcription function with fresh model loading"""
     try:
         # Check if file exists and is not empty
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
             return "[ERROR] File is missing or empty."
         
-        # Use parallel processing for large files
-        result = transcribe_audio_parallel(file_path)
+        # Get file info
+        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+        logger.info(f"Transcribing file: {file_path} ({file_size_mb:.1f}MB)")
         
-        if not result['success']:
-            return result['text']  # Return error message
-        
-        # Apply PII redaction if enabled
-        transcript = result['text']
-        config = load_config()
-        if config.get('security', {}).get('redact_pii', False):
-            from analyser import redact_pii
-            transcript = redact_pii(transcript)
-        
-        # Add metadata as comments if available
-        metadata = result.get('metadata', {})
-        if metadata:
-            duration = metadata.get('duration_minutes', 0)
-            if duration > 0:
-                transcript += f"\n\n[Metadata: Duration: {duration:.1f} minutes"
-                if result.get('chunked', False):
-                    transcript += ", Processed in chunks"
-                transcript += "]"
-        
-        # Add warnings if any (but not sample rate warnings)
-        warnings = result.get('warnings', [])
-        if warnings:
-            transcript += f"\n\n[Warnings: {'; '.join(warnings)}]"
-        
-        return transcript
+        # For files over 50MB, convert and chunk
+        if file_size_mb > 50:
+            logger.info("Large file detected, using chunking approach")
+            return transcribe_large_file_safely(file_path)
+        else:
+            logger.info("Using fresh model approach for stability")
+            return transcribe_with_fresh_model(file_path, "base")
         
     except Exception as e:
         logger.error(f"Transcription error: {e}")
@@ -656,3 +638,104 @@ async def transcribe_audio_async(file_path: str) -> str:
         result = await loop.run_in_executor(executor, transcribe_audio, file_path)
     
     return result
+# NEW FUNCTION GOES HERE - ADD THIS:
+def transcribe_with_fresh_model(file_path: str, model_size: str = "base") -> str:
+    """Transcribe with a fresh model instance to avoid corruption"""
+    try:
+        logger.info(f"Loading fresh {model_size} model for transcription")
+        
+        # Clear any existing model from memory
+        global model
+        if model is not None:
+            del model
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        
+        # Load fresh model
+        import whisper
+        fresh_model = whisper.load_model(model_size, device="cpu")  # Force CPU
+        
+        # Simple single-file transcription (no chunking for now)
+        logger.info(f"Transcribing {file_path} with fresh model")
+        result = fresh_model.transcribe(
+            file_path,
+            fp16=False,
+            verbose=False,
+            language=None
+        )
+        
+        # Clean up model immediately
+        del fresh_model
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        # Reload the global model for the UI
+        model = whisper.load_model(model_size, device="cpu")
+        
+        return result.get('text', '').strip()
+        
+    except Exception as e:
+        logger.error(f"Fresh model transcription failed: {e}")
+        return f"[ERROR] Fresh model transcription failed: {str(e)}"
+        
+def transcribe_large_file_safely(file_path: str) -> str:
+    """Handle large files with extra safety measures"""
+    try:
+        # Convert to optimal format first
+        processed_file = convert_audio_format(file_path, 'wav')
+        
+        # Create smaller chunks (2 minutes each)
+        chunks = chunk_audio(processed_file, 2)  # 2-minute chunks
+        
+        if not chunks:
+            return "[ERROR] Failed to create audio chunks"
+        
+        logger.info(f"Processing {len(chunks)} chunks with fresh models")
+        transcripts = []
+        
+        # Process each chunk with fresh model
+        for i, chunk_path in enumerate(chunks):
+            chunk_id = f"{i+1}/{len(chunks)}"
+            logger.info(f"Processing chunk {chunk_id}")
+            
+            try:
+                # Use fresh model for each chunk
+                chunk_text = transcribe_with_fresh_model(chunk_path, "base")
+                
+                if not chunk_text.startswith("[ERROR]"):
+                    transcripts.append(chunk_text)
+                else:
+                    logger.warning(f"Chunk {chunk_id} failed: {chunk_text}")
+                    transcripts.append(f"[Chunk {chunk_id} failed]")
+                    
+            except Exception as chunk_error:
+                logger.error(f"Chunk {chunk_id} error: {chunk_error}")
+                transcripts.append(f"[Chunk {chunk_id} error: {str(chunk_error)}]")
+            
+            finally:
+                # Clean up chunk file
+                try:
+                    os.remove(chunk_path)
+                except:
+                    pass
+        
+        # Clean up processed file
+        if processed_file != file_path:
+            try:
+                os.remove(processed_file)
+            except:
+                pass
+        
+        # Combine results
+        full_transcript = ' '.join(filter(lambda x: not x.startswith('[ERROR]') and not x.startswith('[Chunk'), transcripts))
+        
+        if not full_transcript.strip():
+            return "[ERROR] No successful transcriptions from any chunks"
+        
+        return full_transcript
+        
+    except Exception as e:
+        logger.error(f"Large file transcription failed: {e}")
+        return f"[ERROR] Large file processing failed: {str(e)}"
