@@ -390,46 +390,58 @@ def cleanup_temp_files(file_paths: List[str]):
             logger.warning(f"Failed to securely delete {file_path}: {e}")
 
 def transcribe_audio(file_path: str) -> str:
-    """Main transcription function with enhanced error handling and security"""
+    """Main transcription function with machine-specific fallback"""
     try:
         # Check if file exists and is not empty
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
             return "[ERROR] File is missing or empty."
         
-        # Use parallel processing for large files
-        result = transcribe_audio_parallel(file_path)
+        # Detect if we're on Windows 11 (the problematic machine)
+        import platform
+        is_windows_11 = "Windows-11" in platform.platform()
         
-        if not result['success']:
-            return result['text']  # Return error message
-        
-        # Apply PII redaction if enabled
-        transcript = result['text']
-        config = load_config()
-        if config.get('security', {}).get('redact_pii', False):
-            from analyser import redact_pii
-            transcript = redact_pii(transcript)
-        
-        # Add metadata as comments if available
-        metadata = result.get('metadata', {})
-        if metadata:
-            duration = metadata.get('duration_minutes', 0)
-            if duration > 0:
-                transcript += f"\n\n[Metadata: Duration: {duration:.1f} minutes"
-                if result.get('chunked', False):
-                    transcript += ", Processed in chunks"
-                transcript += "]"
-        
-        # Add warnings if any (but not sample rate warnings)
-        warnings = result.get('warnings', [])
-        if warnings:
-            transcript += f"\n\n[Warnings: {'; '.join(warnings)}]"
-        
-        return transcript
+        if is_windows_11:
+            # Use ultra-simple transcription for Windows 11
+            logger.info("Windows 11 detected - using simple transcription method")
+            return transcribe_ultra_simple(file_path)
+        else:
+            # Use complex method for other machines (Windows 10, etc.)
+            logger.info("Using standard transcription method")
+            
+            # Use parallel processing for large files
+            result = transcribe_audio_parallel(file_path)
+            
+            if not result['success']:
+                return result['text']  # Return error message
+            
+            # Apply PII redaction if enabled
+            transcript = result['text']
+            config = load_config()
+            if config.get('security', {}).get('redact_pii', False):
+                from analyser import redact_pii
+                transcript = redact_pii(transcript)
+            
+            # Add metadata as comments if available
+            metadata = result.get('metadata', {})
+            if metadata:
+                duration = metadata.get('duration_minutes', 0)
+                if duration > 0:
+                    transcript += f"\n\n[Metadata: Duration: {duration:.1f} minutes"
+                    if result.get('chunked', False):
+                        transcript += ", Processed in chunks"
+                    transcript += "]"
+            
+            # Add warnings if any
+            warnings = result.get('warnings', [])
+            if warnings:
+                transcript += f"\n\n[Warnings: {'; '.join(warnings)}]"
+            
+            return transcript
         
     except Exception as e:
         logger.error(f"Transcription error: {e}")
         return f"[ERROR] Transcription failed: {str(e)}"
-
+        
 # Async version for future use
 async def transcribe_audio_async(file_path: str) -> str:
     """Async version of transcribe_audio for better performance"""

@@ -1,1 +1,50 @@
 audio_samples/
+call_analysis_312/etc/jupyter/nbconfig/notebook.d/pydeck.json
+call_analysis_312/Lib/site-packages/__pycache__/isympy.cpython-312.pyc
+call_analysis_312/Lib/site-packages/__pycache__/pylab.cpython-312.pyc
+call_analysis_312/Lib/site-packages/__pycache__/pylab.cpython-312.pyc
+call_analysis_312/Lib/site-packages/__pycache__/six.cpython-312.pyc
+call_analysis_312/Lib/site-packages/__pycache__/six.cpython-312.pyc
+call_analysis_312/Lib/site-packages/__pycache__/typing_extensions.cpython-312.pyc
+call_analysis_312/Lib/site-packages/_cffi_backend.cp312-win_amd64.pyd
+call_analysis_312/Lib/site-packages/.DS_Store
+call_analysis_312/Lib/site-packages/.DS_Store
+# Virtual environments - NEVER commit these
+call_analysis_312/
+call_analysis_env/
+venv/
+env/
+.venv/
+*.venv
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Audio samples and temporary files
+audio_samples/
+*.wav
+*.mp3
+*.m4a
+*.flac
+
+# Database files
+call_analysis.db
+call_analysis.db-wal
+call_analysis.db-shm
+
+# Encryption keys
+encryption.key
+
+# PDF outputs
+*.pdf
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+CallAnalysisApp/
