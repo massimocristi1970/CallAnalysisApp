@@ -228,7 +228,7 @@ def transcribe_chunk(chunk_path: str, model_instance) -> Dict[str, Any]:
                 'segments': []
             }
         
-        # Check file size (empty files cause the Linear layer error)
+        # Check file size (empty files cause tensor errors)
         file_size = os.path.getsize(chunk_path)
         if file_size == 0:
             return {
@@ -238,12 +238,39 @@ def transcribe_chunk(chunk_path: str, model_instance) -> Dict[str, Any]:
                 'segments': []
             }
         
-        # Clear memory before transcription (helps prevent model state issues)
+        # NEW: Check if file is too small (less than 100KB often causes issues)
+        if file_size < 100000:  # 100KB threshold
+            logger.warning(f"Very small chunk file: {chunk_path} ({file_size} bytes)")
+        
+        # NEW: Additional audio validation using pydub
+        try:
+            from pydub import AudioSegment
+            test_audio = AudioSegment.from_file(chunk_path)
+            duration_ms = len(test_audio)
+            
+            # Skip chunks shorter than 0.5 seconds (often cause tensor issues)
+            if duration_ms < 500:
+                return {
+                    'success': False,
+                    'text': f'[ERROR] Chunk too short ({duration_ms}ms): {chunk_path}',
+                    'language': 'unknown',
+                    'segments': []
+                }
+                
+        except Exception as audio_error:
+            return {
+                'success': False,
+                'text': f'[ERROR] Invalid audio chunk: {str(audio_error)}',
+                'language': 'unknown',
+                'segments': []
+            }
+        
+        # Clear memory before transcription
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         
-        # Use thread lock to prevent concurrent model access (this fixes your main error)
+        # Use thread lock to prevent concurrent model access
         with model_lock:
             # Check model is available
             if model_instance is None:
@@ -254,24 +281,59 @@ def transcribe_chunk(chunk_path: str, model_instance) -> Dict[str, Any]:
                     'segments': []
                 }
             
-            # Transcribe with stability parameters
-            result = model_instance.transcribe(
-                chunk_path,
-                fp16=False,      # Disable half precision for stability
-                verbose=False,   # Reduce output noise
-                language=None,   # Auto-detect (can help with model issues)
-                task="transcribe"  # Explicit task
-            )
-        
-        return {
-            'success': True,
-            'text': result.get('text', '').strip(),
-            'language': result.get('language', 'unknown'),
-            'segments': result.get('segments', [])
-        }
+            # NEW: Try transcription with multiple fallback strategies
+            transcription_attempts = [
+                # Attempt 1: Standard parameters
+                {'fp16': False, 'verbose': False, 'language': None, 'task': 'transcribe'},
+                # Attempt 2: Force English (sometimes helps with tensor issues)
+                {'fp16': False, 'verbose': False, 'language': 'en', 'task': 'transcribe'},
+                # Attempt 3: Minimal parameters
+                {'fp16': False, 'verbose': False}
+            ]
+            
+            last_error = None
+            for attempt_num, params in enumerate(transcription_attempts, 1):
+                try:
+                    logger.info(f"Transcription attempt {attempt_num} for {chunk_path}")
+                    result = model_instance.transcribe(chunk_path, **params)
+                    
+                    # Validate result
+                    if result and 'text' in result:
+                        text = result.get('text', '').strip()
+                        if text:  # Non-empty transcription
+                            return {
+                                'success': True,
+                                'text': text,
+                                'language': result.get('language', 'unknown'),
+                                'segments': result.get('segments', []),
+                                'attempt': attempt_num
+                            }
+                        else:
+                            logger.warning(f"Empty transcription on attempt {attempt_num}")
+                    
+                except Exception as attempt_error:
+                    last_error = attempt_error
+                    logger.warning(f"Attempt {attempt_num} failed: {str(attempt_error)}")
+                    
+                    # Clear cache between attempts
+                    gc.collect()
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    
+                    # Wait briefly between attempts
+                    import time
+                    time.sleep(0.1)
+            
+            # All attempts failed
+            return {
+                'success': False,
+                'text': f'[ERROR] All transcription attempts failed. Last error: {str(last_error)}',
+                'language': 'unknown',
+                'segments': [],
+                'error_type': type(last_error).__name__ if last_error else 'Unknown'
+            }
         
     except torch.cuda.OutOfMemoryError as e:
-        # Handle GPU memory errors specifically
         logger.error(f"CUDA OOM error: {e}")
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -283,21 +345,36 @@ def transcribe_chunk(chunk_path: str, model_instance) -> Dict[str, Any]:
         }
         
     except Exception as e:
-        # Enhanced error reporting with full details
+        # Enhanced error reporting
         import traceback
         error_details = traceback.format_exc()
         logger.error(f"Chunk transcription error: {e}")
         logger.error(f"Full traceback: {error_details}")
         
-        # More specific error message
-        error_type = type(e).__name__
-        return {
-            'success': False,
-            'text': f'[ERROR] Transcription failed: {str(e)} (Type: {error_type})',
-            'language': 'unknown',
-            'segments': [],
-            'error_type': error_type
-        }
+        # NEW: Check for specific known errors
+        error_msg = str(e)
+        if "reshape tensor" in error_msg:
+            return {
+                'success': False,
+                'text': f'[ERROR] Model tensor error (try smaller chunks or different model): {error_msg}',
+                'language': 'unknown',
+                'segments': []
+            }
+        elif "Linear(in_features=" in error_msg:
+            return {
+                'success': False,  
+                'text': f'[ERROR] Model architecture error (try restarting app): {error_msg}',
+                'language': 'unknown',
+                'segments': []
+            }
+        else:
+            return {
+                'success': False,
+                'text': f'[ERROR] Transcription failed: {str(e)}',
+                'language': 'unknown',
+                'segments': [],
+                'error_type': type(e).__name__
+            }
     except Exception as e:
         logger.error(f"Chunk transcription failed: {e}")
         return {
