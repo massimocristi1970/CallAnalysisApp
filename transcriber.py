@@ -606,27 +606,8 @@ def cleanup_temp_files(file_paths: List[str]):
             logger.warning(f"Failed to securely delete {file_path}: {e}")
 
 def transcribe_audio(file_path: str) -> str:
-    """Main transcription function with fresh model loading"""
-    try:
-        # Check if file exists and is not empty
-        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-            return "[ERROR] File is missing or empty."
-        
-        # Get file info
-        file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-        logger.info(f"Transcribing file: {file_path} ({file_size_mb:.1f}MB)")
-        
-        # For files over 50MB, convert and chunk
-        if file_size_mb > 50:
-            logger.info("Large file detected, using chunking approach")
-            return transcribe_large_file_safely(file_path)
-        else:
-            logger.info("Using fresh model approach for stability")
-            return transcribe_with_fresh_model(file_path, "base")
-        
-    except Exception as e:
-        logger.error(f"Transcription error: {e}")
-        return f"[ERROR] Transcription failed: {str(e)}"
+    """Temporarily using ultra-simple transcription"""
+    return transcribe_ultra_simple(file_path)
 
 # Async version for future use
 async def transcribe_audio_async(file_path: str) -> str:
@@ -739,3 +720,35 @@ def transcribe_large_file_safely(file_path: str) -> str:
     except Exception as e:
         logger.error(f"Large file transcription failed: {e}")
         return f"[ERROR] Large file processing failed: {str(e)}"
+        
+def transcribe_ultra_simple(file_path: str) -> str:
+    """Ultra-simple transcription with no fancy features"""
+    try:
+        import whisper
+        import os
+        
+        # Check file exists
+        if not os.path.exists(file_path):
+            return "[ERROR] File not found"
+        
+        # Load model fresh every time
+        print(f"Loading base model for {file_path}")
+        model = whisper.load_model("base", device="cpu")
+        
+        # Basic transcription - no parameters
+        print(f"Starting transcription...")
+        result = model.transcribe(file_path)
+        
+        # Get text
+        text = result.get("text", "").strip()
+        
+        # Clean up
+        del model
+        
+        if not text:
+            return "[ERROR] No text transcribed"
+        
+        return text
+        
+    except Exception as e:
+        return f"[ERROR] Ultra-simple transcription failed: {str(e)}"
