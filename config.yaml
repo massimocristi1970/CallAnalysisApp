@@ -26,6 +26,15 @@ agent_behaviour_phrases:
     - "any questions so far"
     - "let me break that down"
     - "i can rephrase that for you"
+    - "can you explain that again"
+    - "i'm confused"
+    - "I don't understand"
+    - "I have memory problems"
+    - "learning difficulties"
+    - "someone helps me"
+    - "I'm not sure what you mean"
+    - "this is all very confusing"
+    - "I need someone to help me understand"
     
   Fair Treatment:
     - "we're here to help"
@@ -40,6 +49,11 @@ agent_behaviour_phrases:
     - "we'll do our best"
     - "treat you fairly"
     - "understand your situation"
+    - "i understand this is a challenging time for you"
+    - "I can see how difficult this must be"
+    - "I appreciate you sharing this with me"
+    - "That sounds really tough"
+    - "I want to make sure I understand correctly"
     
   Vulnerability Handling:
     - "can I ask if you're okay"
@@ -51,6 +65,11 @@ agent_behaviour_phrases:
     - "we can send a breathing space form"
     - "you don't have to explain"
     - "we understand vulnerability"
+    - "difficult situation"
+    - "i understand this is a challenging time for you"
+    - "what is happening on your side"
+    - "difficult situation"
+    - "what is happening on your side"
     
   Financial Difficulty:
     - "we can set up a plan"
@@ -62,6 +81,9 @@ agent_behaviour_phrases:
     - "let's look at options"
     - "freeze interest"
     - "we'll be fair"
+     - "a lot to pay for"
+    - "waiting on redundancy payment"
+    - "we'll review your income & expenditure"
     
   Resolution & Support:
     - "we'll investigate"
@@ -71,6 +93,8 @@ agent_behaviour_phrases:
     - "next steps"
     - "i've raised that for you"
     - "we'll send confirmation"
+    - "thank you for confirming"
+    - "anything else I can help you with"
 
 # NLP concepts for semantic analysis
 nlp_concepts:
@@ -81,6 +105,11 @@ nlp_concepts:
     - "comprehension"
     - "guidance"
     - "instruction"
+    - "confusion"
+    - "memory issues"
+    - "learning support"
+    - "cognitive difficulty"
+    - "comprehension issue"
     
   Fair Treatment:
     - "fairness"
@@ -89,6 +118,11 @@ nlp_concepts:
     - "equality"
     - "justice"
     - "consideration"
+    - "empathy"
+    - "acknowledgment"
+    - "recognition"
+    - "validation"
+    - "compassion"
     
   Vulnerability Handling:
     - "vulnerability"
@@ -97,6 +131,11 @@ nlp_concepts:
     - "care"
     - "protection"
     - "wellbeing"
+    - "mental health"
+    - "disability"
+    - "accommodation"
+    - "cognitive impairment"
+    - "learning barrier"
     
   Financial Difficulty:
     - "affordability"
@@ -105,6 +144,10 @@ nlp_concepts:
     - "solution"
     - "plan"
     - "option"
+    - "hardship"
+    - "benefit dependency"
+    - "unemployment"
+    - "income assessment"
     
   Resolution & Support:
     - "resolution"
@@ -113,6 +156,10 @@ nlp_concepts:
     - "investigation"
     - "action"
     - "follow-up"
+    - "confirmation"
+    - "assistance"
+    - "support completion"
+    
 
 # Keywords for detection with confidence scoring
 keywords:
@@ -128,6 +175,18 @@ keywords:
     - "cancer"
     - "sectioned"
     - "domestic violence"
+    - "psychosis"
+    - "abused"
+    - "abusive"
+    - "coercion"
+    - "lacks understanding"
+    - "manipulated"
+    - "mental breakdown"
+    - "restraining order"
+    - "refuge"
+    - "feel like giving up"
+    - "breaking point"
+    - "i've had enough"
     
   medium_priority:
     - "mental health"
@@ -149,6 +208,35 @@ keywords:
     - "PTSD"
     - "ADHD"
     - "autism"
+    - "disabilities"
+    - "long term sick"
+    - "therapist"
+    - "rehabilitation"
+    - "homeless"
+    - "sofa surfing"
+    - "disorientated"
+    - "sicknote"
+    - "medication"
+    - "job loss"
+    - "bailiffs"
+    - "CCJ"
+    - "eviction"
+    - "foodbank"
+    - "divorce"
+    - "antidepressants"
+    - "chronic pain"
+    - "mobility issues"
+    - "funeral"
+    - "debt management"
+    - "step change"
+    - "overdrawn"
+    - "no money"
+    - "no income"
+    - "rent arrears"
+    - "overcommitted"
+    - "grieving"
+    - "child unwell"
+    - "temporary accommodation"
     
   low_priority:
     - "manager"
@@ -171,6 +259,12 @@ keywords:
     - "repossession"
     - "arrears"
     - "forbearance"
+    - "tax credit"
+    - "universal credit"
+    - "benefits"
+    - "PIP"
+    - "personal independent pay"
+    - "sickpay"
 
 # Audio processing settings
 audio:
