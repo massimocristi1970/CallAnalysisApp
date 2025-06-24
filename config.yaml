@@ -68,8 +68,6 @@ agent_behaviour_phrases:
     - "difficult situation"
     - "i understand this is a challenging time for you"
     - "what is happening on your side"
-    - "difficult situation"
-    - "what is happening on your side"
     
   Financial Difficulty:
     - "we can set up a plan"
@@ -81,7 +79,7 @@ agent_behaviour_phrases:
     - "let's look at options"
     - "freeze interest"
     - "we'll be fair"
-     - "a lot to pay for"
+    - "a lot to pay for"
     - "waiting on redundancy payment"
     - "we'll review your income & expenditure"
     
@@ -159,7 +157,6 @@ nlp_concepts:
     - "confirmation"
     - "assistance"
     - "support completion"
-    
 
 # Keywords for detection with confidence scoring
 keywords:
@@ -282,25 +279,25 @@ audio:
 
 # Security settings
 security:
-  redact_pii: true
-  secure_temp_files: true
+  redact_pii: false
+  secure_temp_files: false
   auto_cleanup: true
   encryption_key_file: "encryption.key"
   
-# PII patterns for redaction
+# PII patterns for redaction (FIXED INDENTATION)
 pii_patterns:
   phone_numbers:
-    - pattern: '\b(?:\+44\s?)?(?:\(?0\d{4}\)?\s?\d{6}|\(?0\d{3}\)?\s?\d{7})\b'
-      replacement: "[PHONE]"
+    pattern: '\b(?:\+44\s?)?(?:\(?0\d{4}\)?\s?\d{6}|\(?0\d{3}\)?\s?\d{7})\b'
+    replacement: "[PHONE]"
   emails:
-    - pattern: '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-      replacement: "[EMAIL]"
+    pattern: '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    replacement: "[EMAIL]"
   postcodes:
-    - pattern: '\b[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}\b'
-      replacement: "[POSTCODE]"
+    pattern: '\b[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}\b'
+    replacement: "[POSTCODE]"
   account_numbers:
-    - pattern: '\b(?:account|acc|ref)(?:\s*(?:number|no|#))?\s*:?\s*\d{6,12}\b'
-      replacement: "[ACCOUNT]"
+    pattern: '\b(?:account|acc|ref)(?:\s*(?:number|no|#))?\s*:?\s*\d{6,12}\b'
+    replacement: "[ACCOUNT]"
   sort_codes:
-    - pattern: '\b\d{2}-\d{2}-\d{2}\b'
-      replacement: "[SORTCODE]"
+    pattern: '\b\d{2}-\d{2}-\d{2}\b'
+    replacement: "[SORTCODE]"
