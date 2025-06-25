@@ -3,13 +3,19 @@ title Call Analysis App
 echo Starting Call Analysis App...
 echo.
 
-REM Change to the script directory
-cd /d "%~dp0"
+REM Change to the specific project directory
+cd /d "C:\Users\Administrator\OneDrive\Documenten\CallAnalysisApp"
+
+REM Show current directory for debugging
+echo Current directory: %cd%
+echo.
 
 REM Check if app.py exists
 if not exist "app.py" (
     echo ERROR: app.py not found!
-    echo Make sure you're in the correct directory.
+    echo Looking in: %cd%
+    echo Files in this directory:
+    dir *.py
     pause
     exit /b 1
 )
