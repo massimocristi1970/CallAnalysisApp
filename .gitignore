@@ -48,3 +48,6 @@ Thumbs.db
 .vscode/
 .idea/
 CallAnalysisApp/
+__pycache__/transcriber.cpython-311.pyc
+*.pyc
+__pycache__/transcriber.cpython-311.pyc
