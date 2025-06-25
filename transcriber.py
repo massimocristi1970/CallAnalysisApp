@@ -463,7 +463,7 @@ def transcribe_audio_parallel(file_path: str, max_workers: int = 2) -> Dict[str,
                     except Exception as reset_error:
                         logger.error(f"Model reset failed: {reset_error}")
     
-                result = transcribe_chunk_safe(chunk, model, chunk_id)
+                result = transcribe_chunk_safe(chunk, model)
     
                 if result['success']:
                     transcripts.append(result['text'])
@@ -612,47 +612,35 @@ def transcribe_audio(file_path: str) -> str:
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
             return "[ERROR] File is missing or empty."
         
-        # Detect if we're on Windows 11 (the problematic machine)
-        import platform
-        is_windows_11 = "Windows-11" in platform.platform()
+        # Use parallel processing for large files
+        result = transcribe_audio_parallel(file_path)
         
-        if is_windows_11:
-            # Use ultra-simple transcription for Windows 11
-            logger.info("Windows 11 detected - using simple transcription method")
-            return transcribe_ultra_simple(file_path)
-        else:
-            # Use complex method for other machines (Windows 10, etc.)
-            logger.info("Using standard transcription method")
-            
-            # Use parallel processing for large files
-            result = transcribe_audio_parallel(file_path)
-            
-            if not result['success']:
-                return result['text']  # Return error message
-            
-            # Apply PII redaction if enabled
-            transcript = result['text']
-            config = load_config()
-            if config.get('security', {}).get('redact_pii', False):
-                from analyser import redact_pii
-                transcript = redact_pii(transcript)
-            
-            # Add metadata as comments if available
-            metadata = result.get('metadata', {})
-            if metadata:
-                duration = metadata.get('duration_minutes', 0)
-                if duration > 0:
-                    transcript += f"\n\n[Metadata: Duration: {duration:.1f} minutes"
-                    if result.get('chunked', False):
-                        transcript += ", Processed in chunks"
-                    transcript += "]"
-            
-            # Add warnings if any
-            warnings = result.get('warnings', [])
-            if warnings:
-                transcript += f"\n\n[Warnings: {'; '.join(warnings)}]"
-            
-            return transcript
+        if not result['success']:
+            return result['text']  # Return error message
+        
+        # Apply PII redaction if enabled
+        transcript = result['text']
+        config = load_config()
+        if config.get('security', {}).get('redact_pii', False):
+            from analyser import redact_pii
+            transcript = redact_pii(transcript)
+        
+        # Add metadata as comments if available
+        metadata = result.get('metadata', {})
+        if metadata:
+            duration = metadata.get('duration_minutes', 0)
+            if duration > 0:
+                transcript += f"\n\n[Metadata: Duration: {duration:.1f} minutes"
+                if result.get('chunked', False):
+                    transcript += ", Processed in chunks"
+                transcript += "]"
+        
+        # Add warnings if any
+        warnings = result.get('warnings', [])
+        if warnings:
+            transcript += f"\n\n[Warnings: {'; '.join(warnings)}]"
+        
+        return transcript
         
     except Exception as e:
         logger.error(f"Transcription error: {e}")
