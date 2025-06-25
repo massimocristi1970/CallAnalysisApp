@@ -3,13 +3,19 @@ title Call Analysis Dashboard
 echo Starting Call Analysis Dashboard...
 echo.
 
-REM Change to the script directory
-cd /d "%~dp0"
+REM Change to the specific project directory
+cd /d "C:\Users\Administrator\OneDrive\Documenten\CallAnalysisApp"
+
+REM Show current directory for debugging
+echo Current directory: %cd%
+echo.
 
 REM Check if dashboard.py exists
 if not exist "dashboard.py" (
     echo ERROR: dashboard.py not found!
-    echo Make sure you're in the correct directory.
+    echo Looking in: %cd%
+    echo Files in this directory:
+    dir *.py
     pause
     exit /b 1
 )
