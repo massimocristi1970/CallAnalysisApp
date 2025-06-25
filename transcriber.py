@@ -463,7 +463,7 @@ def transcribe_audio_parallel(file_path: str, max_workers: int = 2) -> Dict[str,
                     except Exception as reset_error:
                         logger.error(f"Model reset failed: {reset_error}")
     
-                result = transcribe_chunk_safe(chunk, model)
+                result = transcribe_chunk(chunk, model)
     
                 if result['success']:
                     transcripts.append(result['text'])
