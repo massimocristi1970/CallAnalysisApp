@@ -403,7 +403,7 @@ def transcribe_audio_parallel(file_path: str, max_workers: int = 2) -> Dict[str,
     chunk_duration = config.get('audio', {}).get('chunk_duration_minutes', 5)  # Reduced default
     
     # NEW: Force sequential processing for stability
-    max_workers = 1  # Override to force sequential processing
+    max_workers = min(max_workers, 4)  # Allow up to 4 workers
     
     # NEW: Check model health before starting
     global model
