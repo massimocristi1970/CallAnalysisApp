@@ -489,7 +489,7 @@ def transcribe_audio_parallel(file_path: str, max_workers: int = 2) -> Dict[str,
                 except:
                     pass
             
-            max_workers = min(max_workers, 2)  # Cap at 2 workers for stability
+            max_workers = min(max_workers, 4)  # Cap at 4 workers for stability
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 future_to_chunk = {
                     executor.submit(transcribe_chunk, chunk, model): chunk 
