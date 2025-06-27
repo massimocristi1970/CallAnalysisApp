@@ -141,7 +141,7 @@ st.sidebar.subheader("🤖 Model Settings")
 model_size = st.sidebar.selectbox(
     "Whisper model size", 
     ["base", "small", "medium", "large"], 
-    index=2,
+    index=1,
     help="Larger models are more accurate but slower"
 )
 

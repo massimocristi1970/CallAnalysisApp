@@ -167,13 +167,12 @@ def convert_audio_format(file_path: str, target_format: str = 'wav') -> str:
     config = load_config()
     file_extension = Path(file_path).suffix.lower().lstrip('.')
     
-    # If already in target format, check if preprocessing is needed
-    if file_extension == target_format and not any([
-        config.get('audio', {}).get('normalize_audio', True),
-        config.get('audio', {}).get('noise_reduction', True)
-    ]):
+    # NEW: Skip conversion for MP3 files when targeting WAV
+    if file_extension == 'mp3' and target_format == 'wav':
+        logger.info("Skipping MP3 to WAV conversion - processing MP3 directly")
         return file_path
     
+        
     try:
         # Load audio file
         if file_extension == 'mp3':
@@ -436,9 +435,18 @@ def transcribe_audio_parallel(file_path: str, max_workers: int = 2) -> Dict[str,
     needs_chunking = duration_minutes > chunk_duration
     
     try:
-        # Convert audio to optimal format (includes automatic upsampling)
-        processed_file = convert_audio_format(file_path, 'wav')
-        is_temp_file = processed_file != file_path
+        # NEW: Check if this is an MP3 file we can process directly
+        file_extension = Path(file_path).suffix.lower().lstrip('.')
+    
+        if file_extension == 'mp3':
+            # Process MP3 directly - no conversion!
+            logger.info("Processing MP3 file directly (no conversion)")
+            processed_file = file_path
+            is_temp_file = False
+        else:
+            # Convert non-MP3 files as before
+            processed_file = convert_audio_format(file_path, 'wav')
+            is_temp_file = processed_file != file_path
         
         if needs_chunking:
             # Split into chunks
@@ -606,7 +614,7 @@ def cleanup_temp_files(file_paths: List[str]):
             logger.warning(f"Failed to securely delete {file_path}: {e}")
 
 def transcribe_audio(file_path: str) -> str:
-    """Main transcription function with machine-specific fallback"""
+    """Main transcription function """
     try:
         # Check if file exists and is not empty
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
@@ -726,8 +734,8 @@ def transcribe_ultra_simple(file_path: str) -> str:
             return "[ERROR] File not found"
         
         # Load model fresh every time
-        print(f"Loading base model for {file_path}")
-        model = whisper.load_model("base", device="cpu")
+        print(f"Loading small model for {file_path}")
+        model = whisper.load_model("small", device="cpu")
         
         # Basic transcription - no parameters
         print(f"Starting transcription...")
