@@ -397,7 +397,7 @@ def transcribe_chunk(chunk_path: str, model_instance) -> Dict[str, Any]:
             'segments': []
         }
 
-def transcribe_audio_parallel(file_path: str, max_workers: int = 2) -> Dict[str, Any]:
+def transcribe_audio_parallel(file_path: str, max_workers: int = 4) -> Dict[str, Any]:
     """Transcribe audio using parallel processing with enhanced error handling"""
     config = load_config()
     chunk_duration = config.get('audio', {}).get('chunk_duration_minutes', 5)  # Reduced default
