@@ -1,11 +1,11 @@
 # Call Analysis Configuration
 scoring:
   # Fuzzy matching threshold (0-100)
-  fuzzy_threshold: 80
+  fuzzy_threshold: 85
   # Semantic similarity threshold (0-1)
   semantic_threshold: 0.7
   # Minimum confidence for keyword detection
-  keyword_confidence_threshold: 0.6
+  keyword_confidence_threshold: 0.8
 
 # Agent behavior phrases for rule-based scoring
 agent_behaviour_phrases:
