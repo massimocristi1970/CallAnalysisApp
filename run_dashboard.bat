@@ -4,7 +4,7 @@ echo Starting Call Analysis Dashboard...
 echo.
 
 REM Change to the specific project directory
-cd /d "C:\Users\Administrator\OneDrive\Documenten\CallAnalysisApp"
+cd /d "C:\Dev\GitHub\CallAnalysisApp"
 
 REM Show current directory for debugging
 echo Current directory: %cd%
