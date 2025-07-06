@@ -61,6 +61,15 @@ agent_behaviour_phrases:
     - "depending on where you pay it back"
     - "i've sent you confirmation of the payment plan"
     - "i'll send you the confirmation"
+    - "does that sound okay"
+    - "we do need to just remind you that it is important"
+    - "so are you saying that"
+    - "so what i'll do i will email this plan across to you"
+    - "so does that seem cool"
+    - "so the email i'm just sending you now just confirms the dates and amounts"
+    - "purely for your own records"
+    - "so you'll pay"
+    - "i'm going to send you an email and it'll have the amounts and dates"
     
   Fair Treatment:
     - "we're here to help"
@@ -112,6 +121,7 @@ agent_behaviour_phrases:
     - "having somebody understand the situation that you are in"
     - "don't worry yourself"
     - "no need to stretch yourself"
+    - "i'm glad you're on the road to recovery"
     
   Financial Difficulty:
     - "we can set up a plan"
@@ -150,6 +160,19 @@ agent_behaviour_phrases:
     - "we haven't received a payment in a while"
     - "have you fallen behind with any priority bills"
     - "is there any reason that we can't put you back to your original payment"
+    - "so the financial issues that you got into do you mind telling me about them"
+    - "do you know how much you're in arrears with your"
+    - "when would you be able to make the first payment"
+    - "so have you fallen behind of any of your priority bills"
+    - "so has anything changed with your outgoing"
+    - "so your income is still the same"
+    - "have you fallen behind of any of your other priorities like mortgage rent"
+    - "do you want to tell me a little bit more about that why it's been so bad"
+    - "do you have any other outstanding credit commitments loans credit cards"
+    - "to avoid us having to report on your credit file it is imperative"
+    - "so is there any reason why that payment wasn't made"
+    - "you said you were expecting payment"
+    - "when you took out the application your salary was"
     
   Resolution & Support:
     - "we'll investigate"
@@ -180,6 +203,10 @@ agent_behaviour_phrases:
     - "we are giving you the grace period"
     - "let's look at setting a new payment arrangement"
     - "i will remove the late charge"
+    - "so if we do it over multiple payments"
+    - "let me just put that in place for you"
+    - "now obviously if you do find that you've got spare money"
+    - "you can make extra payment online or by calling us"
 
 # NLP concepts for semantic analysis
 nlp_concepts:
@@ -204,6 +231,11 @@ nlp_concepts:
   - "repayment clarification"
   - "interest rate explanation"
   - "loan terms clarification"
+  - "payment confirmation checking"
+  - "plan sustainability discussion"
+  - "email documentation process"
+  - "casual confirmation language"
+  - "record keeping support"
     
   Fair Treatment:
   - "treating you fairly"
@@ -226,6 +258,18 @@ nlp_concepts:
   - "avoiding pressure tactics"
   - "daily interest disclosure"
   - "default process transparency"
+  - "you're in a position that you want to make an extra payment that's fine"
+  - "the best thing is really to make the payment that you're comfortable with"
+  - "i don't want to put you at further detriment"
+  - "if that figure is comfortable for you and you think that's sustainable"
+  - "i must reiterate that it's really important that you stick to this payment plan"
+  - "i must remind you that it's really important that you stick to this payment plan"
+  - "we don't want to put you into any further detriment"
+  - "if you do find that you've got a bit of spare money one month"
+  - "you can make an extra payment online or by calling us"
+  - "what i will do as a good will gesture is i will remove that"
+  - "right so that fee has been removed"
+  - "we are here to help where we can"
     
   Vulnerability Handling:
   - "recognizing vulnerability"
@@ -246,6 +290,8 @@ nlp_concepts:
   - "providing emotional support"
   - "reducing customer stress"
   - "acknowledging personal struggles"
+  - "recovery acknowledgment"
+  - "health situation recognition"
    
   Financial Difficulty:
   - "assessing affordability"
@@ -271,6 +317,14 @@ nlp_concepts:
   - "credit commitment review"
   - "priority bill assessment"
   - "disposable income calculation"
+  - "arrears assessment"
+  - "priority bill checking"
+  - "income verification"
+  - "outgoing expense review"
+  - "credit commitment analysis"
+  - "payment expectation discussion"
+  - "salary change assessment"
+  - "credit file impact explanation"
     
   Resolution & Support:
   - "providing resolution"
@@ -295,6 +349,10 @@ nlp_concepts:
   - "alternative payment options"
   - "flexible solution offering"
   - "customer accommodation"
+  - "multiple payment option offering"
+  - "plan implementation"
+  - "spare money utilization"
+  - "online payment facilitation"
 
 # Keywords for detection with confidence scoring
 keywords:
@@ -322,14 +380,10 @@ keywords:
     - "feel like giving up"
     - "breaking point"
     - "i've had enough"
-    - "payment plan creation"
-    - "schedule adjustment"
-    - "arrangement setup"
-    - "grace period provision"
-    - "fee removal process"
-    - "alternative payment options"
-    - "flexible solution offering"
-    - "customer accommodation"
+    - "multiple payment option offering"
+    - "plan implementation"
+    - "spare money utilization"
+    - "online payment facilitation"
     
   medium_priority:
     - "mental health"
@@ -385,6 +439,9 @@ keywords:
     - "overwhelmed"
     - "battling"
     - "owe money"
+    - "financial trouble"
+    - "between jobs"
+    - "bust"
     
   low_priority:
     - "manager"
