@@ -221,33 +221,167 @@ def match_any_enhanced(phrases: List[str], text: str, use_semantic: bool = True)
     
     return found_match, best_score, best_match
 
+def count_phrase_occurrences(phrases: List[str], text: str, use_semantic: bool = False) -> Dict[str, Any]:
+    """
+    Count how many times phrases/concepts appear in text with semantic understanding.
+    Returns frequency, matches, and distribution across the text.
+    """
+    config = load_config()
+    fuzzy_threshold = config.get('scoring', {}).get('fuzzy_threshold', 80)
+    semantic_threshold = config.get('scoring', {}).get('semantic_threshold', 0.7)
+    
+    text_lower = text.lower()
+    total_matches = []
+    match_positions = []
+    text_length = len(text)
+    
+    for phrase in phrases:
+        phrase_lower = phrase.lower()
+        
+        # Exact substring matches
+        start_pos = 0
+        while True:
+            pos = text_lower.find(phrase_lower, start_pos)
+            if pos == -1:
+                break
+            total_matches.append({
+                'phrase': phrase,
+                'position': pos,
+                'confidence': 1.0,
+                'type': 'exact'
+            })
+            match_positions.append(pos)
+            start_pos = pos + 1
+        
+        # Fuzzy matches (find similar phrases)
+        words = text_lower.split()
+        phrase_words = phrase_lower.split()
+        
+        # Sliding window for multi-word phrases
+        if len(phrase_words) > 1:
+            for i in range(len(words) - len(phrase_words) + 1):
+                window = ' '.join(words[i:i+len(phrase_words)])
+                fuzzy_score = fuzz.ratio(phrase_lower, window)
+                if fuzzy_score >= fuzzy_threshold:
+                    # Estimate position
+                    estimated_pos = text_lower.find(window)
+                    if estimated_pos != -1 and estimated_pos not in [m['position'] for m in total_matches]:
+                        total_matches.append({
+                            'phrase': phrase,
+                            'matched_text': window,
+                            'position': estimated_pos,
+                            'confidence': fuzzy_score / 100,
+                            'type': 'fuzzy'
+                        })
+                        match_positions.append(estimated_pos)
+        
+        # Semantic similarity (if enabled)
+        if use_semantic:
+            try:
+                semantic_score = get_semantic_similarity(phrase, text)
+                if semantic_score >= semantic_threshold:
+                    # Add as a general semantic match
+                    total_matches.append({
+                        'phrase': phrase,
+                        'position': -1,  # Semantic match doesn't have specific position
+                        'confidence': semantic_score,
+                        'type': 'semantic'
+                    })
+            except Exception:
+                pass
+    
+    # Calculate distribution (how spread out are matches?)
+    distribution_score = 0.0
+    if match_positions:
+        # Divide text into 5 segments
+        segment_size = text_length / 5
+        segments_with_matches = set()
+        for pos in match_positions:
+            segment = int(pos / segment_size) if segment_size > 0 else 0
+            segments_with_matches.add(min(segment, 4))  # Cap at segment 4
+        distribution_score = len(segments_with_matches) / 5.0
+    
+    # Get average confidence
+    avg_confidence = np.mean([m['confidence'] for m in total_matches]) if total_matches else 0.0
+    
+    return {
+        'frequency': len(total_matches),
+        'matches': total_matches,
+        'distribution': distribution_score,
+        'avg_confidence': avg_confidence,
+        'match_positions': match_positions
+    }
+
 def score_call_rule_based(text: str, call_type: str) -> Dict[str, Dict[str, Any]]:
-    """Rule-based QA scoring using configured phrases"""
+    """
+    Enhanced rule-based QA scoring with frequency thresholds.
+    Now requires multiple mentions for full credit.
+    """
     config = load_config()
     agent_phrases = config.get('agent_behaviour_phrases', {})
+    
+    # Frequency thresholds
+    min_full = config.get('scoring', {}).get('min_frequency_for_full_score', 2)
+    min_partial = config.get('scoring', {}).get('min_frequency_for_partial_score', 1)
     
     transcript = text.lower()
     scores = {}
     
     for category, phrases in agent_phrases.items():
-        found, confidence, matched_phrase = match_any_enhanced(phrases, transcript, use_semantic=False)
+        # Count occurrences with frequency tracking
+        occurrence_data = count_phrase_occurrences(phrases, transcript, use_semantic=False)
+        
+        frequency = occurrence_data['frequency']
+        matches = occurrence_data['matches']
+        avg_confidence = occurrence_data['avg_confidence']
+        
+        # Calculate score based on frequency
+        if frequency >= min_full:
+            score = 1.0  # Full credit
+            explanation = f"Agent demonstrated {category.lower()} {frequency} times (excellent - {', '.join(set([m['phrase'] for m in matches[:3]]))}...)"
+        elif frequency >= min_partial:
+            score = 0.5  # Partial credit
+            matched_phrase = matches[0]['phrase'] if matches else 'unknown'
+            explanation = f"Agent demonstrated {category.lower()} {frequency} time(s) (needs improvement - mentioned '{matched_phrase}')"
+        else:
+            score = 0.0  # No credit
+            explanation = f"No evidence of agent demonstrating {category.lower()}"
+        
         scores[category] = {
-            "score": 1 if found else 0,
-            "confidence": confidence,
-            "matched_phrase": matched_phrase,
-            "explanation": (
-                f"Agent demonstrated expected behaviour: {category.lower()} (matched: '{matched_phrase}', confidence: {confidence:.2f})"
-                if found else f"No evidence of agent demonstrating {category.lower()}."
-            )
+            "score": score,
+            "frequency": frequency,
+            "confidence": avg_confidence,
+            "matches": [m['phrase'] for m in matches[:5]],  # Store up to 5 matches
+            "explanation": explanation
         }
     
     return scores
 
 def score_call_nlp_enhanced(text: str, call_type: str) -> Dict[str, Dict[str, Any]]:
-    """Enhanced NLP-based scoring using semantic analysis"""
+    """
+    Enhanced NLP-based scoring using Option A: Frequency × Semantic × Distribution.
+    Provides holistic 0-1.0 score based on conversation-wide analysis.
+    """
     config = load_config()
     agent_phrases = config.get('agent_behaviour_phrases', {})
     nlp_concepts = config.get('nlp_concepts', {})
+    
+    # Get weights from config
+    freq_weight = config.get('scoring', {}).get('nlp_frequency_weight', 0.4)
+    semantic_weight = config.get('scoring', {}).get('nlp_semantic_weight', 0.35)
+    distribution_weight = config.get('scoring', {}).get('nlp_distribution_weight', 0.25)
+    
+    # Estimate call length from text (rough: ~150 words per minute)
+    word_count = len(text.split())
+    estimated_minutes = word_count / 150
+    
+    # Adjust frequency expectations based on call length
+    if estimated_minutes < 5:
+        expected_frequency = 1  # Short call
+    elif estimated_minutes < 15:
+        expected_frequency = 2  # Medium call
+    else:
+        expected_frequency = 3  # Long call
     
     transcript_lower = text.lower()
     scores = {}
@@ -256,58 +390,94 @@ def score_call_nlp_enhanced(text: str, call_type: str) -> Dict[str, Dict[str, An
         nlp = load_spacy_model()
         doc = nlp(text)
         
-        # Extract entities and concepts from the transcript
+        # Extract conversation-wide features
         entities = [ent.text.lower() for ent in doc.ents]
         noun_phrases = [chunk.text.lower() for chunk in doc.noun_chunks]
         
         for category in agent_phrases.keys():
-            # Rule-based matching
-            rule_found, rule_confidence, rule_match = match_any_enhanced(
-                agent_phrases.get(category, []), transcript_lower, use_semantic=True
+            # 1. FREQUENCY COMPONENT: Count phrase occurrences
+            phrase_data = count_phrase_occurrences(
+                agent_phrases.get(category, []), 
+                transcript_lower, 
+                use_semantic=True
             )
+            phrase_frequency = phrase_data['frequency']
+            phrase_distribution = phrase_data['distribution']
+            phrase_confidence = phrase_data['avg_confidence']
             
-            # Concept-based matching
-            concept_found = False
-            concept_confidence = 0.0
-            concept_match = ""
+            # 2. SEMANTIC COMPONENT: Check NLP concepts
+            concept_data = count_phrase_occurrences(
+                nlp_concepts.get(category, []), 
+                transcript_lower, 
+                use_semantic=True
+            )
+            concept_frequency = concept_data['frequency']
+            concept_confidence = concept_data['avg_confidence']
             
-            if category in nlp_concepts:
-                concept_phrases = nlp_concepts[category]
-                concept_found, concept_confidence, concept_match = match_any_enhanced(
-                    concept_phrases, transcript_lower, use_semantic=True
-                )
-            
-            # Entity-based analysis
+            # 3. ENTITY RELEVANCE: Check if relevant entities present
             entity_relevance = 0.0
             if entities:
-                for entity in entities:
-                    if category.lower() in entity or any(concept.lower() in entity for concept in nlp_concepts.get(category, [])):
-                        entity_relevance = max(entity_relevance, 0.7)
+                relevant_entities = [e for e in entities if category.lower().split()[0] in e or 
+                                    any(concept.lower() in e for concept in nlp_concepts.get(category, [])[:5])]
+                entity_relevance = min(len(relevant_entities) / 3, 1.0)  # Cap at 1.0
             
-            # Combine scores
-            final_score = max(rule_confidence, concept_confidence, entity_relevance)
-            found = final_score > 0.5
+            # Combine frequencies
+            total_frequency = phrase_frequency + concept_frequency
             
+            # Calculate normalized frequency score (0-1.0)
+            frequency_score = min(total_frequency / expected_frequency, 1.0)
+            
+            # Calculate semantic quality score (0-1.0)
+            semantic_quality = max(phrase_confidence, concept_confidence, entity_relevance)
+            
+            # Distribution score already 0-1.0
+            distribution_score = max(phrase_distribution, concept_data['distribution'])
+            
+            # OPTION A FORMULA: Weighted combination
+            final_score = (
+                (frequency_score * freq_weight) +
+                (semantic_quality * semantic_weight) +
+                (distribution_score * distribution_weight)
+            )
+            
+            # Cap at 1.0
+            final_score = min(final_score, 1.0)
+            
+            # Determine binary pass/fail (>0.6 = pass)
+            binary_score = 1 if final_score >= 0.6 else 0
+            
+            # Create detailed explanation
             explanation_parts = []
-            if rule_found:
-                explanation_parts.append(f"rule-based match: '{rule_match}' ({rule_confidence:.2f})")
-            if concept_found:
-                explanation_parts.append(f"concept match: '{concept_match}' ({concept_confidence:.2f})")
+            if phrase_frequency > 0:
+                explanation_parts.append(f"phrase frequency: {phrase_frequency}")
+            if concept_frequency > 0:
+                explanation_parts.append(f"concept matches: {concept_frequency}")
             if entity_relevance > 0:
                 explanation_parts.append(f"entity relevance: {entity_relevance:.2f}")
+            explanation_parts.append(f"distribution: {distribution_score:.2f}")
+            explanation_parts.append(f"quality: {semantic_quality:.2f}")
             
             explanation = (
-                f"NLP analysis for {category.lower()}: {', '.join(explanation_parts)}"
-                if explanation_parts else f"No NLP indicators of {category.lower()} detected."
+                f"NLP holistic score: {final_score:.2f} for {category.lower()} "
+                f"({', '.join(explanation_parts)})"
             )
             
             scores[category] = {
-                "score": 1 if found else 0,
+                "score": binary_score,
+                "holistic_score": final_score,  # NEW: 0-1.0 quality score
                 "confidence": final_score,
-                "rule_match": rule_match if rule_found else "",
-                "concept_match": concept_match if concept_found else "",
-                "entity_relevance": entity_relevance,
-                "explanation": explanation
+                "frequency": total_frequency,
+                "frequency_score": frequency_score,
+                "semantic_quality": semantic_quality,
+                "distribution": distribution_score,
+                "explanation": explanation,
+                "details": {
+                    "phrase_frequency": phrase_frequency,
+                    "concept_frequency": concept_frequency,
+                    "entity_relevance": entity_relevance,
+                    "expected_frequency": expected_frequency,
+                    "estimated_call_minutes": round(estimated_minutes, 1)
+                }
             }
     
     except Exception as e:

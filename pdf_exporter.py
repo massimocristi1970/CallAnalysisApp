@@ -65,12 +65,18 @@ def generate_pdf_report(title, transcript, sentiment, keywords, qa_results, qa_r
     pdf.ln()
 
     section("Rule-Based QA Scoring:")
-    write_lines([f"- {k}: {v['score']} - {v['explanation']}" for k, v in qa_results.items()])
-    pdf.ln()
+    for k, v in qa_results.items():
+        score_text = f"{v['score']:.1f}"
+        freq_text = f" (mentioned {v.get('frequency', 0)}x)" if 'frequency' in v else ""
+        write_lines([f"- {k}: {score_text}{freq_text} - {v['explanation']}"])
+        pdf.ln()
 
     section("NLP-Based QA Scoring:")
-    write_lines([f"- {k}: {v['score']} - {v['explanation']}" for k, v in qa_results_nlp.items()])
-    pdf.ln()
+    for k, v in qa_results_nlp.items():
+        holistic = v.get('holistic_score', v['score'])
+        freq = v.get('frequency', 0)
+        write_lines([f"- {k}: {holistic:.2f} (freq: {freq}) - {v['explanation']}"])
+        pdf.ln()
 
     # Output
     pdf_bytes = BytesIO()
