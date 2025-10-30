@@ -1,3 +1,4 @@
+import spacy
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import re
 import yaml
