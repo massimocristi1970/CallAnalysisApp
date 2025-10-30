@@ -45,7 +45,6 @@ def load_spacy_model():
     global _spacy_nlp
     if _spacy_nlp is None:
         try:
-            import spacy
             _spacy_nlp = spacy.load("en_core_web_sm")
         except Exception as e:
             raise Exception(f"Failed to load SpaCy model: {e}. Try: python -m spacy download en_core_web_sm")
