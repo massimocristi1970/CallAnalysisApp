@@ -2,6 +2,14 @@
 
 A comprehensive Streamlit-based application for transcribing, analyzing, and scoring call recordings with advanced NLP capabilities, persistent data storage, and comprehensive performance tracking. Designed to support internal QA processes and compliance with FCA expectations.
 
+## 📚 Documentation Quick Links
+
+- 🚀 **[Quick Start with Supabase](QUICK_START_SUPABASE.md)** - Get cloud database running in 5 minutes
+- 📖 **[Full Supabase Setup Guide](SUPABASE_SETUP.md)** - Detailed setup with security and best practices
+- 🔄 **[Migration Guide](MIGRATION_GUIDE.md)** - Move data between SQLite and Supabase
+- ❓ **[Migration FAQ](ANSWER_TO_QUESTION.md)** - Complete answer to "How to change from local to Supabase?"
+- 🛠️ **[Installation Guide](INSTALLATION.md)** - Basic installation instructions
+
 ## 🚀 New Features (v2.1) - Dashboard Edition
 
 ### 📊 Performance Dashboard System
