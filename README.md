@@ -101,9 +101,9 @@ python -m spacy download en_core_web_sm
    - Database file created automatically as `call_analysis.db`
    
    **Option B: Supabase (Cloud PostgreSQL)**
-   - See [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for detailed instructions
-   - Copy `.env.example` to `.env` and add your Supabase credentials
-   - Configure database tables via Supabase SQL editor
+   - **Quick Start**: See [QUICK_START_SUPABASE.md](QUICK_START_SUPABASE.md) (5 minutes)
+   - **Full Guide**: See [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for detailed instructions
+   - **Migration**: See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) to migrate existing data
 
 5. **Configure the application:**
    - The `config.yaml` file contains all settings

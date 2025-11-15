@@ -40,6 +40,12 @@ encryption.key
 # Environment variables (contains sensitive Supabase credentials)
 .env
 
+# Migration and export files
+export_data.json
+export_from_sqlite.py
+export_from_supabase.py
+import_to_supabase.py
+
 # PDF outputs
 *.pdf
 
