@@ -5,7 +5,7 @@ A comprehensive Streamlit-based application for transcribing, analyzing, and sco
 ## 🚀 New Features (v2.1) - Dashboard Edition
 
 ### 📊 Performance Dashboard System
-- **SQLite database storage** for all call analysis data
+- **Flexible database storage** - SQLite (local) or Supabase (cloud PostgreSQL)
 - **Agent performance tracking** by month with historical trends
 - **Interactive dashboard** with 5 different views (Overview, Agent Performance, Monthly Trends, Category Analysis, Individual Agent)
 - **Real-time performance metrics** with color-coded indicators
@@ -66,7 +66,7 @@ A comprehensive Streamlit-based application for transcribing, analyzing, and sco
 - 📊 **Visual Dashboard** with color-coded results and confidence scores
 - 🔎 **Advanced Search** and filtering capabilities
 - 📄 **Comprehensive PDF Reports** with individual and combined exports
-- 💾 **Persistent Data Storage** using SQLite database
+- 💾 **Persistent Data Storage** using SQLite (local) or Supabase (cloud)
 
 ## 🛠️ Installation
 
@@ -94,10 +94,16 @@ pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 ```
 
-4. **Create required files:**
-   - Create `database.py` (database management)
-   - Create `dashboard.py` (performance dashboard)
-   - Update `app.py` with database integration
+4. **Configure database (choose one):**
+   
+   **Option A: Local SQLite (Default)**
+   - No additional configuration needed
+   - Database file created automatically as `call_analysis.db`
+   
+   **Option B: Supabase (Cloud PostgreSQL)**
+   - See [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for detailed instructions
+   - Copy `.env.example` to `.env` and add your Supabase credentials
+   - Configure database tables via Supabase SQL editor
 
 5. **Configure the application:**
    - The `config.yaml` file contains all settings
@@ -134,15 +140,34 @@ streamlit run app.py
 CallAnalysisApp/
 ├── app.py                 # Main call analysis interface
 ├── dashboard.py           # Performance dashboard
-├── database.py            # SQLite database management
+├── database.py            # Database management (SQLite/Supabase)
 ├── analyser.py           # NLP analysis and scoring
 ├── transcriber.py        # Audio processing and transcription
 ├── pdf_exporter.py       # PDF report generation
 ├── config.yaml           # Configuration settings
+├── .env.example          # Environment variables template
+├── SUPABASE_SETUP.md     # Supabase configuration guide
 ├── requirements.txt      # Python dependencies
-├── call_analysis.db      # SQLite database (auto-created)
+├── call_analysis.db      # SQLite database (if using local)
 └── audio_samples/        # Temporary audio file storage
 ```
+
+### Database Options
+
+The application supports two database backends:
+
+**1. SQLite (Local)**
+- Default option, no configuration required
+- Data stored locally in `call_analysis.db` file
+- Perfect for single-user or development use
+- No internet connection required
+
+**2. Supabase (Cloud PostgreSQL)**
+- Cloud-based PostgreSQL database
+- Multi-user support with proper authentication
+- Accessible from anywhere
+- Automatic backups (paid plans)
+- See [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for setup instructions
 
 ### Database Schema
 - **agents**: Agent information and department tracking

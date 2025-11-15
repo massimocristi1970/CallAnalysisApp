@@ -37,6 +37,9 @@ call_analysis.db-shm
 # Encryption keys
 encryption.key
 
+# Environment variables (contains sensitive Supabase credentials)
+.env
+
 # PDF outputs
 *.pdf
 
