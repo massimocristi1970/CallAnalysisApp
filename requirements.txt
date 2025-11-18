@@ -15,7 +15,7 @@ torchvision==0.24.1
 torchaudio==2.9.1
 
 # NumPy pinned to avoid building from source on Streamlit Cloud
-numpy==1.25.3
+numpy==1.25.2
 
 vaderSentiment>=3.3.2
 spacy>=3.7.0
