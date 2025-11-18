@@ -1,6 +1,6 @@
 # Call Analysis App - Updated Requirements for Python 3.11-3.13
 # Last updated: 2025-11-18
-# Fixed PyTorch / torchaudio compatibility and removed unavailable packages
+# Fixed PyTorch / torchaudio compatibility and pinned NumPy to a wheel available for Python 3.13
 
 # Core Streamlit App
 streamlit>=1.28.0
@@ -14,8 +14,8 @@ torch==2.9.1
 torchvision==0.24.1
 torchaudio==2.9.1
 
-# NumPy pinned to avoid building from source on Streamlit Cloud
-numpy==1.25.2
+# NumPy pinned to a known working wheel for Python 3.13 to avoid building from source
+numpy==1.26.4
 
 vaderSentiment>=3.3.2
 spacy>=3.7.0
