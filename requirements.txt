@@ -46,6 +46,10 @@ typing-extensions>=4.0.0  # For type hints
 plotly>=5.15.0
 pandas>=2.0.0
 
+# Supabase for cloud database
+supabase>=2.0.0
+python-dotenv>=1.0.0
+
 # Development and debugging tools (optional)
 # Uncomment if needed for debugging
 # memory-profiler>=0.60.0
