@@ -1,3 +1,15 @@
+# name=app.py (top of file) url=https://github.com/massimocristi1970/CallAnalysisApp/blob/main/app.py
+# Insert this at the very top of app.py, before any other imports
+import sys
+try:
+    import audioop as _audioop  # stdlib audioop (CPython)
+    # make the name 'pyaudioop' point to stdlib 'audioop' so pydub's `import pyaudioop as audioop`
+    # will succeed in environments where pyaudioop isn't available.
+    sys.modules.setdefault("pyaudioop", _audioop)
+except Exception:
+    # audioop may not exist in some very minimal builds — just continue and let pydub handle it.
+    pass
+
 # app.py
 import streamlit as st
 
