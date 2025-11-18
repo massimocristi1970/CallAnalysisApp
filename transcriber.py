@@ -8,6 +8,7 @@ except Exception:
 
 # transcriber.py
 import os
+import streamlit as st
 import tempfile
 import asyncio
 import concurrent.futures
