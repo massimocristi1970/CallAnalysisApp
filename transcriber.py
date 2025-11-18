@@ -1,23 +1,13 @@
-import os
-import streamlit as st
 # --- SHIM: ensure pyaudioop resolves to stdlib audioop (MUST be first) ---
 import sys
 try:
-    import audioop as _audioop  # stdlib audioop (CPython)
+    import audioop as _audioop
     sys.modules.setdefault("pyaudioop", _audioop)
 except Exception:
     pass
 
-# Optional debug output (will appear in Streamlit logs) to confirm the shim ran:
-import logging
-logging.getLogger().setLevel(logging.INFO)
-logging.info("Shim applied: pyaudioop in sys.modules = %s", "pyaudioop" in sys.modules)
-
-# transcriber.py (rest of file)
-from pydub import AudioSegment
-# ... the rest of your transcriber.py code continues unchanged ...
-from pydub import AudioSegment
-from pydub.effects import normalize, compress_dynamic_range
+# transcriber.py
+import os
 import tempfile
 import asyncio
 import concurrent.futures
@@ -29,6 +19,27 @@ import logging
 import torch
 import threading
 import gc
+
+# Lazy import pattern: import pydub inside functions to ensure shim runs first
+def _get_audiosegment():
+    """Lazy import AudioSegment to ensure shim runs before pydub imports"""
+    try:
+        from pydub import AudioSegment
+        return AudioSegment
+    except Exception as e:
+        logging.exception("Failed to import pydub.AudioSegment: %s", e)
+        raise RuntimeError("Audio processing requires pydub to be installed and available.\n"
+                           "On Streamlit Cloud, ensure pydub is in requirements.txt and ffmpeg is available.")
+
+def _get_pydub_effects():
+    """Lazy import pydub.effects to ensure shim runs first"""
+    try:
+        from pydub.effects import normalize, compress_dynamic_range
+        return normalize, compress_dynamic_range
+    except Exception as e:
+        logging.exception("Failed to import pydub.effects: %s", e)
+        raise RuntimeError("Audio processing requires pydub to be installed and available.\n"
+                           "On Streamlit Cloud, ensure pydub is in requirements.txt and ffmpeg is available.")
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -109,6 +120,7 @@ def validate_audio_file(file_path: str) -> Dict[str, Any]:
     
     # Try to load audio file to check if it's valid
     try:
+        AudioSegment = _get_audiosegment()
         if file_extension == 'mp3':
             audio = AudioSegment.from_mp3(file_path)
         elif file_extension == 'wav':
@@ -149,11 +161,13 @@ def validate_audio_file(file_path: str) -> Dict[str, Any]:
     
     return validation_result
 
-def preprocess_audio(audio: AudioSegment, config: Dict[str, Any]) -> AudioSegment:
+def preprocess_audio(audio, config: Dict[str, Any]):
     """Preprocess audio for better transcription quality"""
     audio_config = config.get('audio', {})
     
     try:
+        normalize, compress_dynamic_range = _get_pydub_effects()
+        
         # Normalize audio levels
         if audio_config.get('normalize_audio', True):
             audio = normalize(audio)
@@ -190,6 +204,8 @@ def convert_audio_format(file_path: str, target_format: str = 'wav') -> str:
     
         
     try:
+        AudioSegment = _get_audiosegment()
+        
         # Load audio file
         if file_extension == 'mp3':
             audio = AudioSegment.from_mp3(file_path)
@@ -227,6 +243,7 @@ def convert_audio_format(file_path: str, target_format: str = 'wav') -> str:
 def chunk_audio(file_path: str, chunk_duration_minutes: int = 10) -> List[str]:
     """Split audio file into smaller chunks for processing"""
     try:
+        AudioSegment = _get_audiosegment()
         audio = AudioSegment.from_file(file_path)
         chunk_duration_ms = chunk_duration_minutes * 60 * 1000
         
@@ -273,7 +290,7 @@ def transcribe_chunk(chunk_path: str, model_instance) -> Dict[str, Any]:
         
         # NEW: Additional audio validation using pydub
         try:
-            from pydub import AudioSegment
+            AudioSegment = _get_audiosegment()
             test_audio = AudioSegment.from_file(chunk_path)
             duration_ms = len(test_audio)
             
