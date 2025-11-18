@@ -1,5 +1,12 @@
 import os
 import streamlit as st
+# --- SHIM: ensure pyaudioop imports resolve to stdlib audioop (must be first) ---
+import sys
+try:
+    import audioop as _audioop  # stdlib audioop (CPython)
+    sys.modules.setdefault("pyaudioop", _audioop)
+except Exception:
+    pass
 from pydub import AudioSegment
 from pydub.effects import normalize, compress_dynamic_range
 import tempfile
