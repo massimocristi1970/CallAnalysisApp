@@ -1,28 +1,30 @@
-# Call Analysis App - Updated Requirements for Python 3.11-3.12
-# Last updated: 2025-06-24
-# Fixed PyTorch compatibility issues and added stability improvements
+# Call Analysis App - Updated Requirements for Python 3.11-3.13
+# Last updated: 2025-11-18
+# Fixed PyTorch compatibility for Streamlit Cloud (Python 3.13)
 
 # Core Streamlit App
 streamlit>=1.28.0
 
-# Audio Processing & Transcription  
+# Audio Processing & Transcription
 openai-whisper>=20231117
 pydub>=0.25.1
 
-# Machine Learning & NLP - FIXED PYTORCH VERSIONS FOR STABILITY
-# Install PyTorch CPU version separately with:
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-torch>=2.0.0,<2.3.0
-torchvision>=0.15.0,<0.18.0  
-torchaudio>=2.0.0,<2.3.0
-numpy>=1.21.0,<2.0.0  # Critical: NumPy 2.x breaks PyTorch compatibility
+# Machine Learning & NLP - Updated PyTorch to versions with wheels for Python 3.13
+# Note: Streamlit Cloud uses Python 3.13; torch >=2.5.0 has wheels for 3.13 on PyPI.
+torch>=2.5.0,<3.0.0
+torchvision>=0.16.0,<1.0.0
+torchaudio>=2.5.0,<1.0.0
+
+# NumPy: allow newer versions compatible with modern torch builds
+numpy>=1.23.0
+
 vaderSentiment>=3.3.2
 spacy>=3.7.0
 scikit-learn>=1.3.0
 
 # Text Processing & Matching
 fuzzywuzzy>=0.18.0
-python-Levenshtein>=0.21.0  # Fixes fuzzywuzzy performance warning
+python-Levenshtein>=0.21.0
 ftfy>=6.1.1
 
 # Configuration & Data
@@ -31,16 +33,15 @@ PyYAML>=6.0
 # PDF Generation
 fpdf2>=2.7.6
 
-# Security (Optional - can be disabled if installation issues)
-cryptography>=41.0.0
+# Security (Optional)
+cryptography>=41.0
 
 # Threading and Performance
-threading-utils>=0.3.0  # For improved thread safety
+threading-utils>=0.3.0
 
-# Additional dependencies that may be auto-installed
-# but specified for clarity
-pathlib2>=2.3.5  # For older Python compatibility (Python <3.8)
-typing-extensions>=4.0.0  # For type hints
+# Additional
+pathlib2>=2.3.5
+typing-extensions>=4.0.0
 
 # Dashboard dependencies
 plotly>=5.15.0
@@ -49,8 +50,3 @@ pandas>=2.0.0
 # Supabase for cloud database
 supabase>=2.0.0
 python-dotenv>=1.0.0
-
-# Development and debugging tools (optional)
-# Uncomment if needed for debugging
-# memory-profiler>=0.60.0
-# psutil>=5.9.0
