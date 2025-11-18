@@ -1,12 +1,21 @@
 import os
 import streamlit as st
-# --- SHIM: ensure pyaudioop imports resolve to stdlib audioop (must be first) ---
+# --- SHIM: ensure pyaudioop resolves to stdlib audioop (MUST be first) ---
 import sys
 try:
     import audioop as _audioop  # stdlib audioop (CPython)
     sys.modules.setdefault("pyaudioop", _audioop)
 except Exception:
     pass
+
+# Optional debug output (will appear in Streamlit logs) to confirm the shim ran:
+import logging
+logging.getLogger().setLevel(logging.INFO)
+logging.info("Shim applied: pyaudioop in sys.modules = %s", "pyaudioop" in sys.modules)
+
+# transcriber.py (rest of file)
+from pydub import AudioSegment
+# ... the rest of your transcriber.py code continues unchanged ...
 from pydub import AudioSegment
 from pydub.effects import normalize, compress_dynamic_range
 import tempfile

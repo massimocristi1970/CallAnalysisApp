@@ -1,13 +1,10 @@
-# --- SHIM: ensure pyaudioop imports resolve to stdlib audioop (must be first) ---
+# --- SHIM: ensure pyaudioop resolves to stdlib audioop (MUST be first) ---
 import sys
 try:
     import audioop as _audioop  # stdlib audioop (CPython)
-    # Make the name 'pyaudioop' point to stdlib 'audioop' so pydub's
-    # `import pyaudioop as audioop` will succeed in environments
-    # where pyaudioop isn't available.
     sys.modules.setdefault("pyaudioop", _audioop)
 except Exception:
-    # audioop may not exist in some minimal builds — continue and let pydub handle it.
+    # audioop may not exist in extremely minimal environments; continue anyway
     pass
 
 # app.py
