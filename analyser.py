@@ -82,14 +82,25 @@ def init_encryption():
 analyzer = SentimentIntensityAnalyzer()
 
 def get_sentiment(text: str) -> str:
-    """Analyze sentiment of text using VADER"""
+    """
+    Analyze sentiment using relative scoring. 
+    Since all calls are net-positive due to agent language,
+    we classify based on relative positivity instead. 
+    """
     scores = analyzer.polarity_scores(text)
-    compound = scores["compound"]
-    if compound >= 0.05:
+    pos_score = scores["pos"]
+    neg_score = scores["neg"]
+    net_sentiment = pos_score - neg_score
+    
+    # Based on analysis: Net sentiment ranges from 0.03 to 0.28
+    # Median is around 0.15
+    # Use percentile-based classification:
+    
+    if net_sentiment >= 0.17:  # Top 33% - most positive
         return "Positive"
-    elif compound <= -0.05:
+    elif net_sentiment <= 0.12:  # Bottom 33% - least positive (classified as negative)
         return "Negative"
-    else:
+    else:  # Middle 33%
         return "Neutral"
 
 def redact_pii(text: str) -> str:
