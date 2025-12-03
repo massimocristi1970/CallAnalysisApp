@@ -21,21 +21,176 @@ BRACKET_SPEAKER_RE = re.compile(r'^\s*\[(agent|customer|caller|rep|a|c)\]\s*(.*)
 
 # Expanded phrase lists (add more phrases here as you find them)
 AGENT_PATTERNS = [
-    r"thank you for calling", r"how can i help", r"i'll be happy to", r"let me check that",
-    r"is there anything else", r"have a great day", r"i understand", r"i apologize",
-    r"let me transfer", r"one moment please", r"i see that", r"according to our records",
-    r"please hold", r"for data protection", r"may i have", r"hold on", r"bear with me",
-    r"let me just", r"please confirm", r"i will transfer", r"i will escalate"
+    # Greetings and openings
+    r"thank you for calling", r"thanks for calling", r"good morning", r"good afternoon",
+    r"good evening", r"how can i help", r"how may i help", r"how can i assist",
+    r"what can i do for you", r"welcome to", r"you're through to", r"my name is",
+    r"speaking with", r"who am i speaking with",
+    
+    # Empathy and acknowledgment
+    r"i understand", r"i apologize", r"i'm sorry to hear", r"i'm really sorry",
+    r"i completely understand", r"i totally understand", r"that must be frustrating",
+    r"that must be annoying", r"that must be difficult", r"i can see why",
+    r"i appreciate your patience", r"thank you for your patience", r"i do apologize",
+    r"apologies for", r"sorry about that", r"i can imagine", r"that's not ideal",
+    r"i understand how frustrating", r"i know this is frustrating", r"i hear you",
+    r"i can see how", r"that sounds frustrating", r"i'm sorry you've had to",
+    
+    # Action phrases
+    r"i'll be happy to", r"i'd be happy to", r"i'll gladly", r"let me check that",
+    r"let me look into", r"let me see", r"let me have a look", r"i'll just",
+    r"let me just", r"bear with me", r"one moment please", r"just a moment",
+    r"please hold", r"hold on", r"give me a second", r"give me a moment",
+    r"i will transfer", r"let me transfer", r"i'll put you through",
+    r"i will escalate", r"i'll raise this", r"i'll pass this on", r"let me get",
+    r"i'll arrange", r"i'll organise", r"i'll organize", r"i'll set that up",
+    r"i'll sort that", r"leave it with me", r"let me take care of",
+    r"i can certainly", r"i can definitely", r"absolutely i can", r"of course i can",
+    r"no problem at all", r"not a problem", r"i'll make a note", r"i've made a note",
+    r"i'll update", r"i've updated", r"i'll process", r"i've processed",
+    
+    # Verification and compliance
+    r"for data protection", r"for security purposes", r"to verify your", r"to confirm your",
+    r"may i have", r"can i take", r"please confirm", r"can you confirm",
+    r"could you confirm", r"just to confirm", r"just to verify", r"for verification",
+    r"i just need to", r"before i can", r"i'll need to ask", r"security question",
+    r"password", r"date of birth", r"postcode", r"zip code", r"address on file",
+    r"account number", r"reference number", r"last four digits",
+    
+    # Information delivery
+    r"i see that", r"i can see that", r"i can see here", r"according to our records",
+    r"what i can see is", r"looking at your account", r"on your account",
+    r"i can confirm", r"i can tell you", r"what's happened is", r"the reason is",
+    r"this is because", r"the issue is", r"what i'll do is", r"the next step",
+    r"what happens now", r"going forward", r"from now on",
+    
+    # Resolution confirmations
+    r"i've now", r"that's all sorted", r"that's been done", r"that's gone through",
+    r"you should see that", r"that's been processed", r"that's complete",
+    r"that's been actioned", r"i've actioned", r"that's resolved", r"all done",
+    r"you're all set", r"that should now", r"that will now", r"i've removed",
+    r"i've added", r"i've changed", r"i've cancelled", r"i've canceled",
+    r"i've refunded", r"i've credited", r"i've applied", r"i've waived",
+    
+    # Setting expectations
+    r"this can take", r"this usually takes", r"you should receive", r"expect to see",
+    r"within .* days", r"within .* hours", r"by the end of", r"allow up to",
+    r"please allow", r"it may take", r"typically takes", r"normally takes",
+    
+    # Closing
+    r"is there anything else", r"anything else i can help", r"is there anything more",
+    r"what else can i", r"before you go", r"have a great day", r"have a lovely day",
+    r"have a good day", r"have a nice day", r"take care", r"thank you for your patience",
+    r"thanks for bearing with me", r"pleasure speaking", r"glad i could help",
+    r"happy to help", r"if you have any other questions", r"don't hesitate to call",
+    r"feel free to call back", r"we're here if you need", r"enjoy the rest of your day"
 ]
 
 CUSTOMER_PATTERNS = [
-    r"i need help with", r"my problem is", r"i'm having trouble", r"i am having trouble",
-    r"can you help me", r"i don't understand", r"this isn't working", r"this is not working",
-    r"i want to", r"why is", r"when will", r"i can't", r"it won't let me", r"i tried",
-    r"i am unhappy", r"i am frustrated", r"i'm frustrated", r"i am angry", r"not working",
-    r"cancel my", r"i have a complaint", r"i am disappointed", r"i need to speak to (?:a|the)",
-    r"you're not helping", r"i'm not happy", r"this is ridiculous", r"this is urgent",
-    r"i need a refund", r"i'm calling about", r"i'm calling regarding"
+    # Inquiry openers
+    r"i'm calling about", r"i'm calling regarding", r"i'm calling to", r"i'm ringing about",
+    r"i'm phoning about", r"i need help with", r"can you help me", r"can you tell me",
+    r"could you tell me", r"i just wanted to know", r"i'm calling to check",
+    r"i want to", r"i need to", r"i'd like to", r"i was wondering", r"i wanted to ask",
+    r"i have a question", r"quick question", r"just a quick", r"i'm just checking",
+    r"can i ask", r"could i ask", r"do you know", r"would you be able to",
+    r"is it possible to", r"am i able to", r"can i", r"how do i", r"where do i",
+    r"what do i need to", r"i'm trying to", r"i'm looking to", r"i'm hoping to",
+    r"i received a letter", r"i got an email", r"i got a text", r"i got a message",
+    r"someone called me", r"i missed a call", r"following up on", r"getting back to you",
+    
+    # Providing context
+    r"so basically", r"so what happened", r"the thing is", r"the issue is",
+    r"what's happened is", r"long story short", r"to cut a long story",
+    
+    # Confusion and problems
+    r"my problem is", r"i'm having trouble", r"i am having trouble", r"i'm having issues",
+    r"i'm having difficulty", r"i don't understand", r"i can't understand",
+    r"i'm confused", r"i'm a bit confused", r"i'm not sure", r"i don't know why",
+    r"this isn't working", r"this is not working", r"it's not working", r"it doesn't work",
+    r"it won't let me", r"i can't", r"i couldn't", r"i tried", r"i've tried",
+    r"not working", r"stopped working", r"it keeps", r"every time i",
+    r"why is", r"why does", r"why can't i", r"why won't", r"when will",
+    r"how come", r"how long", r"what's going on", r"what's happening",
+    r"something's wrong", r"there's a problem", r"there's an issue", r"there's an error",
+    r"i'm getting an error", r"it says", r"it's saying", r"it's telling me",
+    r"i keep getting", r"i got an error", r"error message",
+    
+    # Frustration and complaints (negative)
+    r"i am unhappy", r"i'm unhappy", r"i am frustrated", r"i'm frustrated",
+    r"i am angry", r"i'm angry", r"i'm furious", r"i'm livid", r"i'm fuming",
+    r"i'm not happy", r"i'm not pleased", r"i'm not impressed", r"i'm not satisfied",
+    r"i have a complaint", r"i want to complain", r"i wish to complain",
+    r"i am disappointed", r"i'm disappointed", r"i'm really disappointed",
+    r"you're not helping", r"you're not listening", r"no one is helping",
+    r"nobody is helping", r"nobody seems to", r"no one seems to",
+    r"this is ridiculous", r"this is unacceptable", r"this is a joke",
+    r"this is outrageous", r"this is disgraceful", r"this is shocking",
+    r"absolutely useless", r"completely useless", r"waste of time", r"joke of a company",
+    r"worst service", r"terrible service", r"appalling service", r"dreadful",
+    r"i've called multiple times", r"i've called before", r"i've rung before",
+    r"i've been waiting", r"i've been on hold", r"nobody has helped",
+    r"no one has helped", r"this has been going on", r"i've already explained",
+    r"i've told you", r"i've said this", r"how many times", r"i keep having to",
+    r"i shouldn't have to", r"this should have been", r"this was supposed to",
+    r"you promised", r"i was promised", r"i was told", r"i was assured",
+    r"nothing has been done", r"still not resolved", r"still not fixed",
+    r"still waiting", r"yet again", r"once again", r"here we go again",
+    r"sick of this", r"sick and tired", r"had enough", r"fed up",
+    r"at my wit's end", r"at the end of my tether", r"losing patience",
+    r"lost patience", r"beyond frustrated", r"extremely disappointed",
+    
+    # Escalation requests
+    r"i need to speak to (?:a|the)", r"can i speak to (?:a|your)", r"put me through to",
+    r"i want to escalate", r"i want to make a complaint", r"i need a manager",
+    r"i want a manager", r"i demand to speak", r"get me a supervisor",
+    r"let me speak to someone else", r"someone more senior", r"your supervisor",
+    r"your manager", r"complaints department", r"i want to take this further",
+    r"i'll be taking this further", r"i'll go to the ombudsman", r"trading standards",
+    r"i'll contact", r"i'll be contacting", r"hear from my solicitor", r"hear from my lawyer",
+    
+    # Urgency
+    r"this is urgent", r"i need this sorted", r"i need this resolved", r"i need this fixed",
+    r"as soon as possible", r"asap", r"right away", r"immediately", r"straight away",
+    r"today", r"by the end of", r"i can't wait", r"time sensitive", r"critical",
+    
+    # Transactional requests
+    r"cancel my", r"i need a refund", r"i want a refund", r"i'd like a refund",
+    r"i want to close", r"i want to cancel", r"i'd like to cancel",
+    r"i want my money back", r"refund me", r"credit my account",
+    r"i want to return", r"i want compensation", r"i expect compensation",
+    r"goodwill gesture", r"what are you going to do", r"how will you fix this",
+    
+    # Skepticism and doubt
+    r"are you sure", r"is that right", r"that doesn't sound right", r"that can't be right",
+    r"i don't think that's", r"i was told something different", r"that's not what i was told",
+    r"i don't believe", r"really\?", r"seriously\?", r"you're joking",
+    
+    # Acceptance and understanding (neutral)
+    r"okay", r"i see", r"right", r"i understand", r"fair enough", r"alright",
+    r"got it", r"that makes sense", r"i understand now", r"oh i see",
+    r"ah right", r"oh okay", r"that explains it", r"i didn't realise",
+    r"i didn't realize", r"i wasn't aware", r"no one told me",
+    
+    # Positive and resolution
+    r"perfect", r"that's perfect", r"that's great", r"that's brilliant", r"that's wonderful",
+    r"that's fantastic", r"that's amazing", r"that's excellent", r"that's fab",
+    r"thanks so much", r"thank you so much", r"thank you very much", r"really appreciate",
+    r"much appreciated", r"i appreciate that", r"i appreciate your help",
+    r"you've been (?:really |very |so )?helpful", r"you've been great",
+    r"you've been brilliant", r"you've been amazing", r"you've been fantastic",
+    r"that works", r"that's fine", r"that'll do", r"that's sorted then",
+    r"brilliant", r"lovely", r"great stuff", r"wonderful", r"smashing", r"brill",
+    r"okay great", r"excellent", r"superb", r"spot on",
+    r"that's exactly what i needed", r"just what i needed", r"exactly what i was looking for",
+    r"glad that's sorted", r"happy with that", r"i'm pleased", r"i'm satisfied",
+    r"very happy", r"really pleased", r"so pleased", r"over the moon",
+    r"thank goodness", r"what a relief", r"that's a relief", r"finally",
+    r"at last", r"about time", r"you've made my day", r"really helpful",
+    r"couldn't ask for more", r"above and beyond", r"excellent service",
+    r"great service", r"fantastic service", r"best service", r"highly recommend",
+    r"i'll be sure to", r"i'll definitely", r"will do thank", r"cheers",
+    r"thanks a lot", r"thanks ever so much", r"ta", r"thanks a bunch"
 ]
 
 SENTENCE_SPLIT_RE = re.compile(r'(?<=[.!?])\s+')
