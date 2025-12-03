@@ -195,11 +195,10 @@ CUSTOMER_PATTERNS = [
 
 SENTENCE_SPLIT_RE = re.compile(r'(?<=[.!?])\s+')
 
-# Thresholds you'll likely tune
+# Thresholds
 SENTENCE_CONFIDENCE_THRESHOLD = 0.12   # per-sentence confidence below this is treated as low
 OVERALL_CONFIDENCE_THRESHOLD = 0.10    # final confidence below this -> 'unknown'
-VADER_POS_THRESH = 0.10                # per-sentence VADER pos threshold (lowered to catch more positives)
-VADER_NEG_THRESH = -0.15               # per-sentence VADER neg threshold (raised to catch more negatives)
+# Note: VADER thresholds now use same logic as analyser.py (net_sentiment = pos - neg)
 
 def extract_customer_from_labeled_transcript(transcript: str) -> str:
     """Return concatenated lines explicitly labeled as customer (if present)."""
@@ -295,20 +294,26 @@ def identify_customer_segments(transcript: str) -> str:
     return ""
 
 def _vader_sentence_score(sentence: str) -> Tuple[str, float]:
-    """Return (label, confidence) for a sentence using VADER."""
-    scores = analyzer. polarity_scores(sentence)
-    compound = scores.get("compound", 0.0)
-    conf = abs(compound)
+    """
+    Return (label, confidence) for a sentence using VADER. 
+    Uses the same logic as analyser.py get_sentiment() for consistency.
+    """
+    scores = analyzer.polarity_scores(sentence)
+    pos_score = scores. get("pos", 0.0)
+    neg_score = scores.get("neg", 0.0)
+    net_sentiment = pos_score - neg_score
     
-    # Give neutral a proper confidence score (inverse of how extreme the compound is)
-    if compound >= VADER_POS_THRESH:
-        return "positive", conf
-    if compound <= VADER_NEG_THRESH:
-        return "negative", conf
+    # Calculate confidence based on how far from neutral the score is
+    # Net sentiment typically ranges from -0.3 to +0.3
+    conf = min(abs(net_sentiment) * 3, 1.0)  # Scale to 0-1 range
     
-    # Neutral confidence: higher when compound is closer to 0
-    neutral_conf = max(0.3, 1.0 - abs(compound * 2))
-    return "neutral", neutral_conf
+    # Use same thresholds as analyser.py for consistency
+    if net_sentiment >= 0.17:  # Top 33% - most positive
+        return "positive", max(conf, 0.5)
+    elif net_sentiment <= 0.12:  # Bottom 33% - least positive
+        return "negative", max(conf, 0.5)
+    else:  # Middle 33%
+        return "neutral", max(conf, 0.4)
 
 def _transformer_score_batch(sentences: List[str]) -> List[Tuple[str, float]]:
     """
