@@ -42,9 +42,9 @@ SENTENCE_SPLIT_RE = re.compile(r'(?<=[.!?])\s+')
 
 # Thresholds you'll likely tune
 SENTENCE_CONFIDENCE_THRESHOLD = 0.12   # per-sentence confidence below this is treated as low
-OVERALL_CONFIDENCE_THRESHOLD = 0.15    # final confidence below this -> 'unknown'
-VADER_POS_THRESH = 0.15                # per-sentence VADER pos threshold
-VADER_NEG_THRESH = -0.25               # per-sentence VADER neg threshold
+OVERALL_CONFIDENCE_THRESHOLD = 0.05    # final confidence below this -> 'unknown'
+VADER_POS_THRESH = 0.05                # per-sentence VADER pos threshold (lowered to catch more positives)
+VADER_NEG_THRESH = -0.05               # per-sentence VADER neg threshold (raised to catch more negatives)
 
 def extract_customer_from_labeled_transcript(transcript: str) -> str:
     """Return concatenated lines explicitly labeled as customer (if present)."""
@@ -71,6 +71,7 @@ def identify_customer_segments(transcript: str) -> str:
     - Prefer explicit speaker labels (Customer:, C:, [C], etc.)
     - Fall back to heuristic line scoring with expanded patterns
     - Use simple cleaning to strip speaker tags
+    - FINAL FALLBACK: if nothing found, use all non-agent lines
     """
     if not transcript:
         return ""
@@ -83,6 +84,8 @@ def identify_customer_segments(transcript: str) -> str:
     # 2) fallback heuristic: score each line
     lines = transcript.splitlines()
     customer_segments = []
+    non_agent_lines = []  # Track all lines that aren't clearly agent
+    
     for line in lines:
         if not line.strip():
             continue
@@ -97,7 +100,7 @@ def identify_customer_segments(transcript: str) -> str:
         customer_score = sum(1 for p in CUSTOMER_PATTERNS if re.search(p, low))
 
         # boost if explicit "Customer:" occurs in the line
-        if re.search(r'\b(customer|cust|c)[:\-\]]', l, re.IGNORECASE):
+        if re.search(r'\b(customer|cust|c)[:\-\]]', l, re. IGNORECASE):
             customer_score += 2
 
         # heuristic: short lines 1-6 words that don't contain agent keywords are often customer short replies
@@ -109,12 +112,32 @@ def identify_customer_segments(transcript: str) -> str:
         if '?' in l:
             customer_score += 1
 
+        # strip common speaker tags at start
+        cleaned = re.sub(r'^\s*(?:customer|cust|c|agent|a|rep|advisor)[:\-\]\)]\s*', '', l, flags=re.IGNORECASE)
+        
+        # Track non-agent lines for final fallback
+        if agent_score == 0:
+            non_agent_lines.append(cleaned)
+
         if customer_score > agent_score or (customer_score > 0 and agent_score == 0):
-            # strip common speaker tags at start
-            cleaned = re.sub(r'^\s*(?:customer|cust|c|agent|a|rep|advisor)[:\-\]\)]\s*', '', l, flags=re.IGNORECASE)
             customer_segments.append(cleaned)
 
-    return " ".join(customer_segments).strip()
+    # If we found customer segments, return them
+    if customer_segments:
+        return " ".join(customer_segments).strip()
+    
+    # 3) FINAL FALLBACK: If no customer segments found but we have non-agent lines,
+    # use those (better than returning nothing)
+    if non_agent_lines:
+        return " ".join(non_agent_lines).strip()
+    
+    # 4) LAST RESORT: If transcript has content but no structure detected,
+    # return the whole transcript for sentiment analysis (something is better than nothing)
+    cleaned_transcript = transcript.strip()
+    if len(cleaned_transcript) > 50:  # Only if there's meaningful content
+        return cleaned_transcript
+    
+    return ""
 
 def _vader_sentence_score(sentence: str) -> Tuple[str, float]:
     """Return (label, confidence) for a sentence using VADER."""
