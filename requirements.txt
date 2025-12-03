@@ -1,6 +1,6 @@
-# Call Analysis App - Updated Requirements for Python 3.11-3.12
-# Last updated: 2025-06-24
-# Fixed PyTorch compatibility issues and added stability improvements
+# Call Analysis App - Updated Requirements for Python 3.11-3.13
+# Last updated: 2025-12-03
+# Updated for Python 3.13 and PyTorch 2.5+ compatibility
 
 # Core Streamlit App
 streamlit>=1.28.0
@@ -9,13 +9,12 @@ streamlit>=1.28.0
 openai-whisper>=20231117
 pydub>=0.25.1
 
-# Machine Learning & NLP - FIXED PYTORCH VERSIONS FOR STABILITY
-# Install PyTorch CPU version separately with:
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+# Machine Learning & NLP - Updated for Python 3.13 compatibility
+# PyTorch 2.5+ supports Python 3.13
 torch>=2.5.0
 torchvision>=0.21.0  
-torchaudio>=2.0.0,<2.3.0
-numpy>=1.21.0,<2.0.0  # Critical: NumPy 2.x breaks PyTorch compatibility
+torchaudio>=2.5.0
+numpy>=1.21.0,<2.1.0  # PyTorch 2.5+ supports NumPy 2.x
 vaderSentiment>=3.3.2
 spacy>=3.7.0
 scikit-learn>=1.3.0
