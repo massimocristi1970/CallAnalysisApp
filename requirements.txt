@@ -13,7 +13,7 @@ pydub>=0.25.1
 # Install PyTorch CPU version separately with:
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 torch>=2.5.0
-torchvision>=0.15.0,<0.18.0  
+torchvision>=0.21.0  
 torchaudio>=2.0.0,<2.3.0
 numpy>=1.21.0,<2.0.0  # Critical: NumPy 2.x breaks PyTorch compatibility
 vaderSentiment>=3.3.2
