@@ -42,9 +42,9 @@ SENTENCE_SPLIT_RE = re.compile(r'(?<=[.!?])\s+')
 
 # Thresholds you'll likely tune
 SENTENCE_CONFIDENCE_THRESHOLD = 0.12   # per-sentence confidence below this is treated as low
-OVERALL_CONFIDENCE_THRESHOLD = 0.05    # final confidence below this -> 'unknown'
-VADER_POS_THRESH = 0.05                # per-sentence VADER pos threshold (lowered to catch more positives)
-VADER_NEG_THRESH = -0.05               # per-sentence VADER neg threshold (raised to catch more negatives)
+OVERALL_CONFIDENCE_THRESHOLD = 0.10    # final confidence below this -> 'unknown'
+VADER_POS_THRESH = 0.10                # per-sentence VADER pos threshold (lowered to catch more positives)
+VADER_NEG_THRESH = -0.15               # per-sentence VADER neg threshold (raised to catch more negatives)
 
 def extract_customer_from_labeled_transcript(transcript: str) -> str:
     """Return concatenated lines explicitly labeled as customer (if present)."""
@@ -141,14 +141,19 @@ def identify_customer_segments(transcript: str) -> str:
 
 def _vader_sentence_score(sentence: str) -> Tuple[str, float]:
     """Return (label, confidence) for a sentence using VADER."""
-    scores = analyzer.polarity_scores(sentence)
+    scores = analyzer. polarity_scores(sentence)
     compound = scores.get("compound", 0.0)
     conf = abs(compound)
+    
+    # Give neutral a proper confidence score (inverse of how extreme the compound is)
     if compound >= VADER_POS_THRESH:
         return "positive", conf
     if compound <= VADER_NEG_THRESH:
         return "negative", conf
-    return "neutral", conf
+    
+    # Neutral confidence: higher when compound is closer to 0
+    neutral_conf = max(0.3, 1.0 - abs(compound * 2))
+    return "neutral", neutral_conf
 
 def _transformer_score_batch(sentences: List[str]) -> List[Tuple[str, float]]:
     """
@@ -229,15 +234,16 @@ def analyze_customer_sentiment(customer_text: str) -> Tuple[str, float, Dict]:
             elif tlabel == "negative":
                 score_vote -= weight_t
 
-            if score_vote > 0.0:
+            # Add a neutral zone - if score_vote is very small, call it neutral
+            if score_vote > 0.15:
                 final_label = "positive"
                 final_conf = abs(score_vote)
-            elif score_vote < 0.0:
+            elif score_vote < -0.15:
                 final_label = "negative"
                 final_conf = abs(score_vote)
             else:
                 final_label = "neutral"
-                final_conf = max(weight_v, weight_t)
+                final_conf = max(0.3, max(weight_v, weight_t))
 
         # accumulate
         if final_label == "positive":
