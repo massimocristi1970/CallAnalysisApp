@@ -353,7 +353,7 @@ class CallAnalysisDB:
             
             # Get agent and date for summary update
             cursor.execute("SELECT agent_id, call_date FROM calls WHERE call_id = ?", (call_id,))
-            result = cursor.fetchone()
+            result = cursor. fetchone()
             if result:
                 agent_id, call_date = result
                 
@@ -365,4 +365,132 @@ class CallAnalysisDB:
                 conn.commit()
                 
                 # Update monthly summary
-                self.update_monthly_summary(agent_id, call_date)
+                self. update_monthly_summary(agent_id, call_date)
+
+    def reassign_calls_to_agent(self, from_agent_name: str, to_agent_name: str, call_ids: List[int] = None) -> int:
+        """
+        Reassign calls from one agent to another.
+        
+        Args:
+            from_agent_name: The misspelled/incorrect agent name
+            to_agent_name: The correct agent name to reassign calls to
+            call_ids: Optional list of specific call_ids to reassign.  If None, reassigns ALL calls.
+        
+        Returns:
+            Number of calls reassigned
+        """
+        with sqlite3. connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Get the source agent_id
+            cursor.execute("SELECT agent_id FROM agents WHERE agent_name = ?", (from_agent_name,))
+            from_result = cursor.fetchone()
+            if not from_result:
+                raise ValueError(f"Agent '{from_agent_name}' not found in database")
+            from_agent_id = from_result[0]
+            
+            # Get or create the destination agent
+            to_agent_id = self.add_agent(to_agent_name)
+            
+            # Get the call dates that will be affected (for updating monthly summaries)
+            if call_ids:
+                placeholders = ','.join(['?' for _ in call_ids])
+                cursor.execute(f"""
+                    SELECT DISTINCT call_id, call_date FROM calls 
+                    WHERE agent_id = ? AND call_id IN ({placeholders})
+                """, [from_agent_id] + call_ids)
+            else:
+                cursor.execute("""
+                    SELECT DISTINCT call_id, call_date FROM calls WHERE agent_id = ? 
+                """, (from_agent_id,))
+            
+            affected_calls = cursor. fetchall()
+            affected_dates = set(row[1] for row in affected_calls)
+            
+            # Reassign the calls
+            if call_ids:
+                placeholders = ','.join(['?' for _ in call_ids])
+                cursor.execute(f"""
+                    UPDATE calls SET agent_id = ? 
+                    WHERE agent_id = ? AND call_id IN ({placeholders})
+                """, [to_agent_id, from_agent_id] + call_ids)
+            else:
+                cursor.execute("""
+                    UPDATE calls SET agent_id = ?  WHERE agent_id = ?
+                """, (to_agent_id, from_agent_id))
+            
+            reassigned_count = cursor.rowcount
+            conn.commit()
+            
+            # Update monthly summaries for both agents for all affected months
+            for call_date_str in affected_dates:
+                if isinstance(call_date_str, str):
+                    call_date_obj = datetime.strptime(call_date_str, '%Y-%m-%d'). date()
+                else:
+                    call_date_obj = call_date_str
+                self.update_monthly_summary(from_agent_id, call_date_obj)
+                self.update_monthly_summary(to_agent_id, call_date_obj)
+            
+            return reassigned_count
+
+    def merge_agents(self, misspelled_name: str, correct_name: str, delete_misspelled: bool = True) -> Dict[str, Any]:
+        """
+        Merge a misspelled agent into the correct agent, moving all calls.
+        
+        Args:
+            misspelled_name: The incorrect/misspelled agent name
+            correct_name: The correct agent name
+            delete_misspelled: Whether to deactivate the misspelled agent after merge
+        
+        Returns:
+            Dictionary with merge results
+        """
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Check misspelled agent exists
+            cursor.execute("SELECT agent_id, agent_name FROM agents WHERE agent_name = ?", (misspelled_name,))
+            misspelled = cursor.fetchone()
+            if not misspelled:
+                raise ValueError(f"Agent '{misspelled_name}' not found")
+            
+            # Get call count before merge
+            cursor.execute("SELECT COUNT(*) FROM calls WHERE agent_id = ?", (misspelled[0],))
+            call_count = cursor.fetchone()[0]
+            
+            # Reassign all calls
+            reassigned = self. reassign_calls_to_agent(misspelled_name, correct_name)
+            
+            # Optionally deactivate the misspelled agent
+            if delete_misspelled:
+                cursor.execute("""
+                    UPDATE agents SET is_active = 0 WHERE agent_name = ? 
+                """, (misspelled_name,))
+                conn.commit()
+            
+            return {
+                'misspelled_agent': misspelled_name,
+                'correct_agent': correct_name,
+                'calls_reassigned': reassigned,
+                'misspelled_deactivated': delete_misspelled
+            }
+
+    def list_agents_with_call_counts(self) -> List[Dict[str, Any]]:
+        """List all agents with their call counts to help identify misspellings."""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT 
+                    a. agent_id,
+                    a.agent_name,
+                    a.is_active,
+                    COUNT(c.call_id) as call_count
+                FROM agents a
+                LEFT JOIN calls c ON a.agent_id = c.agent_id
+                GROUP BY a.agent_id
+                ORDER BY a. agent_name
+            """)
+            return [
+                {'agent_id': row[0], 'agent_name': row[1], 'is_active': bool(row[2]), 'call_count': row[3]}
+                for row in cursor.fetchall()
+            ]
