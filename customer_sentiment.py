@@ -430,8 +430,7 @@ def analyze_customer_sentiment(customer_text: str) -> Tuple[str, float, Dict]:
     neg_score = neg_weight / total_weight
     neu_score = neu_weight / total_weight
 
-    # Choose highest
-    best_label = "neutral"
+        # Choose highest and remap neutral -> positive/negative
     best_score = max(pos_score, neg_score, neu_score)
     if best_score < OVERALL_CONFIDENCE_THRESHOLD:
         # low confidence overall -> unknown
@@ -442,7 +441,8 @@ def analyze_customer_sentiment(customer_text: str) -> Tuple[str, float, Dict]:
     elif neg_score >= pos_score and neg_score >= neu_score:
         best_label = "negative"
     else:
-        best_label = "neutral"
+        # neutral case -> remap to nearest of positive or negative based on pos vs neg weight
+        best_label = "positive" if pos_score >= neg_score else "negative"
 
     return best_label, float(best_score), details
 
