@@ -51,3 +51,6 @@ CallAnalysisApp/
 __pycache__/transcriber.cpython-311.pyc
 *.pyc
 __pycache__/transcriber.cpython-311.pyc
+call_analysis.db 
+CallAnalysisApp.zip 
+*.db 
