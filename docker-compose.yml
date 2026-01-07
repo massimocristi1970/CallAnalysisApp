@@ -1,0 +1,64 @@
+version: '3.8'
+
+# Local testing setup for Call Analysis App
+# NOTE: Create a .env file from .env.example if you want to customize settings
+# All settings have defaults, so .env file is optional
+
+services:
+  call-analysis-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: call-analysis-app
+    ports:
+      # Main Call Analysis app
+      - "8501:8501"
+      # Dashboard app
+      - "8503:8503"
+    volumes:
+      # Persist database between container restarts
+      - ./call_analysis.db:/app/call_analysis.db
+      # Optional: Mount audio samples directory for testing
+      - ./audio_samples:/app/audio_samples
+      # Optional: Mount config for easy updates during development
+      - ./config.yaml:/app/config.yaml:ro
+    environment:
+      # Environment variables with defaults (can be overridden in .env file)
+      - DATABASE_PATH=${DATABASE_PATH:-call_analysis.db}
+      - MAIN_APP_PORT=${MAIN_APP_PORT:-8501}
+      - DASHBOARD_PORT=${DASHBOARD_PORT:-8503}
+      - SERVER_ADDRESS=${SERVER_ADDRESS:-0.0.0.0}
+      - WHISPER_MODEL_SIZE=${WHISPER_MODEL_SIZE:-base}
+      - SPACY_MODEL=${SPACY_MODEL:-en_core_web_sm}
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - REDACT_PII=${REDACT_PII:-false}
+      - AUTO_CLEANUP=${AUTO_CLEANUP:-true}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Resource limits (adjust based on your system)
+    deploy:
+      resources:
+        limits:
+          # Limit to 16GB RAM (matching HF Spaces FREE tier)
+          memory: 16G
+          # Limit to 2 CPU cores (matching HF Spaces FREE tier)
+          cpus: '2.0'
+        reservations:
+          memory: 4G
+          cpus: '1.0'
+
+# Optional: Named volumes for better management
+volumes:
+  call_analysis_data:
+    driver: local
+
+# Networks
+networks:
+  default:
+    name: call-analysis-network
