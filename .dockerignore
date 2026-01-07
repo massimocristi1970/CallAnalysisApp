@@ -1,0 +1,73 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+.venv/
+*.venv
+call_analysis_312/
+call_analysis_env/
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# Database files (will be managed separately or created fresh)
+*.db-wal
+*.db-shm
+
+# Environment files
+.env
+
+# Audio samples (will be created fresh in container)
+audio_samples/*
+
+# PDF outputs (generated dynamically)
+*.pdf
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Batch files (Windows-specific)
+*.bat
+
+# Compressed archives
+CallAnalysisApp.zip
+*.tar.gz
+*.zip
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Package lists
+package_list.txt
+requirements_exact.txt
+
+# Documentation that's not needed in container
+INSTALLATION.md
+
+# Keep these files (explicitly exclude from ignore)
+# !requirements.txt
+# !config.yaml
+# !fonts/
+# !dejavu-sans-ttf-2.37/
