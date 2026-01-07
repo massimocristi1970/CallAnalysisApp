@@ -250,14 +250,27 @@ https://YOUR_USERNAME-call-analysis-app.hf.space
 ```
 
 **Dashboard App:**
-The dashboard runs on port 8503. Hugging Face Spaces will automatically expose it at:
-```
-https://YOUR_USERNAME-call-analysis-app.hf.space/?port=8503
-```
+The dashboard runs on port 8503. Hugging Face Spaces Docker containers can expose multiple ports.
 
-Or you can access it through the Hugging Face interface:
-- Click the **"App"** dropdown at the top
-- Select **"Port 8503"**
+**Access methods:**
+1. **Primary URL** (port 8501 - main app):
+   ```
+   https://YOUR_USERNAME-call-analysis-app.hf.space
+   ```
+
+2. **Dashboard** (port 8503):
+   - Hugging Face Spaces will detect the exposed ports automatically
+   - Look for a port selector in the Hugging Face interface
+   - The exact URL format may vary, but typically accessible through the HF interface
+   - Check the Space's "App" section for available endpoints
+
+**Note:** Hugging Face Spaces may require you to configure port visibility in the Space settings. If the dashboard is not automatically accessible, you may need to:
+- Check the Space settings for port configuration
+- Refer to Hugging Face Spaces documentation for multi-port Docker apps
+- Access the dashboard through the main app if it provides navigation links
+
+For the most up-to-date information on accessing multiple ports, see:
+[Hugging Face Spaces Docker Documentation](https://huggingface.co/docs/hub/spaces-sdks-docker)
 
 ### Step 3: Test Your Application
 
@@ -448,14 +461,17 @@ Before deploying to Hugging Face Spaces, you can test the Docker setup locally.
 
 ### Using Docker Compose (Recommended)
 
-#### Step 1: Create .env file
+#### Step 1: Create .env file (Optional)
 ```bash
-# Copy the example environment file
+# The .env file is OPTIONAL - all settings have defaults
+# Copy the example file only if you want to customize settings
 cp .env.example .env
 
 # Edit if needed (optional)
 nano .env
 ```
+
+**Note:** If you don't create a .env file, the application will use default values.
 
 #### Step 2: Build and run
 ```bash

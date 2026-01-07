@@ -1,5 +1,9 @@
 version: '3.8'
 
+# Local testing setup for Call Analysis App
+# NOTE: Create a .env file from .env.example if you want to customize settings
+# All settings have defaults, so .env file is optional
+
 services:
   call-analysis-app:
     build:
@@ -19,7 +23,7 @@ services:
       # Optional: Mount config for easy updates during development
       - ./config.yaml:/app/config.yaml:ro
     environment:
-      # Load environment variables from .env file
+      # Environment variables with defaults (can be overridden in .env file)
       - DATABASE_PATH=${DATABASE_PATH:-call_analysis.db}
       - MAIN_APP_PORT=${MAIN_APP_PORT:-8501}
       - DASHBOARD_PORT=${DASHBOARD_PORT:-8503}
@@ -30,9 +34,6 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - REDACT_PII=${REDACT_PII:-false}
       - AUTO_CLEANUP=${AUTO_CLEANUP:-true}
-    env_file:
-      # Load additional environment variables from .env file
-      - .env
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
