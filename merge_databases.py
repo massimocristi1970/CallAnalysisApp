@@ -85,10 +85,8 @@ if __name__ == "__main__":
     print("=" * 50)
 
     # Use absolute path to be safe
-    import os
-
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    local_db = os.path.join(script_dir, "call_analysis.db")
+    local_db = os.path.join(script_dir, "call_analysis.db")  # ← NO SPACE!
 
     print(f"\n📁 Script location: {script_dir}")
     print(f"📁 Looking for database:  {local_db}")
@@ -96,11 +94,11 @@ if __name__ == "__main__":
 
     if not os.path.exists(local_db):
         print(f"\n❌ Error: Local database not found")
-        print(f"   Expected location: {local_db}")
+        print(f"   Expected location:  {local_db}")
         input("\nPress Enter to exit...")
         exit(1)
 
-    print(f"\n📁 Local database: {local_db}")
+    print(f"\n📁 Local database found!")
     hf_db = input("📥 Enter path to downloaded HF database: ").strip('"')
 
     if merge_databases(local_db, hf_db):
