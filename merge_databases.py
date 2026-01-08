@@ -84,11 +84,19 @@ if __name__ == "__main__":
     print("  Call Analysis Database Merger")
     print("=" * 50)
 
-    local_db = "call_analysis. db"
+    # Use absolute path to be safe
+    import os
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    local_db = os.path.join(script_dir, "call_analysis. db")
+
+    print(f"\n📁 Script location: {script_dir}")
+    print(f"📁 Looking for database:  {local_db}")
+    print(f"📁 Database exists: {os.path.exists(local_db)}")
 
     if not os.path.exists(local_db):
-        print(f"❌ Error: Local database not found in current directory")
-        print(f"   Make sure you're running this from:  C:\\Dev\\GitHub\\CallAnalysisApp")
+        print(f"\n❌ Error: Local database not found")
+        print(f"   Expected location: {local_db}")
         input("\nPress Enter to exit...")
         exit(1)
 
