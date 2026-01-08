@@ -86,20 +86,49 @@ if __name__ == "__main__":
 
     # Use absolute path to be safe
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    local_db = os.path.join(script_dir, "call_analysis.db")  # ← NO SPACE!
+    local_db = os.path.join(script_dir, "call_analysis.db")
 
     print(f"\n📁 Script location: {script_dir}")
-    print(f"📁 Looking for database:  {local_db}")
+    print(f"📁 Looking for database: {local_db}")
     print(f"📁 Database exists: {os.path.exists(local_db)}")
 
     if not os.path.exists(local_db):
         print(f"\n❌ Error: Local database not found")
-        print(f"   Expected location:  {local_db}")
+        print(f"   Expected location: {local_db}")
         input("\nPress Enter to exit...")
         exit(1)
 
     print(f"\n📁 Local database found!")
-    hf_db = input("📥 Enter path to downloaded HF database: ").strip('"')
+    print(f"\n🔍 Opening file picker...")
+    print(f"   Select the downloaded Hugging Face database file")
+
+    # Import file dialog
+    from tkinter import Tk, filedialog
+
+    # Hide the root tkinter window
+    root = Tk()
+    root.withdraw()
+    root.attributes('-topmost', True)
+
+    # Open file picker dialog
+    hf_db = filedialog.askopenfilename(
+        title="Select Hugging Face Database File",
+        filetypes=[
+            ("Database files", "*.db"),
+            ("All files", "*.*")
+        ],
+        initialdir=os.path.expanduser("~/Downloads")  # Start in Downloads folder
+    )
+
+    root.destroy()
+
+    # Check if user cancelled
+    if not hf_db:
+        print("\n❌ No file selected.  Exiting.")
+        input("\nPress Enter to exit...")
+        exit(0)
+
+    print(f"\n📥 Selected file: {hf_db}")
 
     if merge_databases(local_db, hf_db):
         print("\n🎉 Success! You can now view the data in your dashboard.")
