@@ -33,9 +33,6 @@ fpdf2>=2.7.6
 # Security (Optional - can be disabled if installation issues)
 cryptography>=41.0.0
 
-# Threading and Performance
-threading-utils>=0.3.0  # For improved thread safety
-
 # Additional dependencies that may be auto-installed
 # but specified for clarity
 pathlib2>=2.3.5  # For older Python compatibility (Python <3.8)
