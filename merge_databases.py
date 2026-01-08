@@ -88,7 +88,7 @@ if __name__ == "__main__":
     import os
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    local_db = os.path.join(script_dir, "call_analysis. db")
+    local_db = os.path.join(script_dir, "call_analysis.db")
 
     print(f"\n📁 Script location: {script_dir}")
     print(f"📁 Looking for database:  {local_db}")
