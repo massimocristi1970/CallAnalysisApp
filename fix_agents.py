@@ -1,20 +1,59 @@
+"""
+Fix Agent Name Misspellings
+Merges misspelled agent names into the correct canonical name
+"""
+
 from database import CallAnalysisDB
 
 db = CallAnalysisDB()
 
-# Fix Bianca Mcarthur misspellings
-result1 = db.merge_agents("Bianca nMcarthur", "Bianca Mcarthur")
-print(f"Moved {result1['calls_reassigned']} calls from '{result1['misspelled_agent']}' to '{result1['correct_agent']}'")
+# Define all misspellings and their correct names
+# Format: "Correct Name":  ["misspelling1", "misspelling2", ...]
+AGENT_CORRECTIONS = {
+    "Bianca Mcarthur": [
+        "Bianca nMcarthur",
+        "Biana Mcarthur"
+    ],
+    "Bernadette Wykes": [
+        "Bernadette Wyatt"
+    ],
+    "David Pipe": [
+        "David Piupe"
+    ]
+}
 
-result2 = db. merge_agents("Biana Mcarthur", "Bianca Mcarthur")
-print(f"Moved {result2['calls_reassigned']} calls from '{result2['misspelled_agent']}' to '{result2['correct_agent']}'")
+# Process all corrections
+print("=" * 60)
+print("  Agent Name Correction Tool")
+print("=" * 60)
 
-# Fix Bernadette Wykes misspelling
-result3 = db.merge_agents("Bernadette Wyatt", "Bernadette Wykes")
-print(f"Moved {result3['calls_reassigned']} calls from '{result3['misspelled_agent']}' to '{result3['correct_agent']}'")
+total_moved = 0
 
-print("\n=== Done!  Verify the results: ===")
+for correct_name, misspellings in AGENT_CORRECTIONS.items():
+    print(f"\n📝 Processing: {correct_name}")
+
+    for misspelled in misspellings:
+        result = db.merge_agents(misspelled, correct_name)
+        calls_moved = result['calls_reassigned']
+
+        if calls_moved > 0:
+            print(f"   ✅ Moved {calls_moved} calls from '{misspelled}'")
+            total_moved += calls_moved
+        else:
+            print(f"   ℹ️  No calls found for '{misspelled}'")
+
+print("\n" + "=" * 60)
+print(f"🎉 Complete! Total calls reassigned: {total_moved}")
+print("=" * 60)
+
+# Show current state of corrected agents
+print("\n📊 Verification - Agent Call Counts:")
+print("-" * 60)
+
 for agent in db.list_agents_with_call_counts():
-    if 'Bianca' in agent['agent_name'] or 'Bernadette' in agent['agent_name']:
-        status = "active" if agent['is_active'] else "inactive"
+    # Check if this agent is in our corrections
+    if any(agent['agent_name'] == correct_name for correct_name in AGENT_CORRECTIONS.keys()):
+        status = "✓ active" if agent['is_active'] else "✗ inactive"
         print(f"  {agent['agent_name']}: {agent['call_count']} calls ({status})")
+
+print()
