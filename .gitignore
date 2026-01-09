@@ -54,3 +54,6 @@ __pycache__/transcriber.cpython-311.pyc
 call_analysis.db 
 CallAnalysisApp.zip 
 *.db 
+upload_to_hf.py 
+upload_to_hf.bat 
+hf_config.py 
