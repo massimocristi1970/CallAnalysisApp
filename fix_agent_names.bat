@@ -12,7 +12,7 @@ REM Change to CallAnalysisApp directory
 cd /d "C:\Dev\GitHub\CallAnalysisApp"
 
 REM Run the correction script
-python fix_agent_names.py
+python fix_agents.py
 
 echo.
 echo ====================================================
