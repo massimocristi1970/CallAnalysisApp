@@ -12,13 +12,21 @@ db = CallAnalysisDB()
 AGENT_CORRECTIONS = {
     "Bianca Mcarthur": [
         "Bianca nMcarthur",
-        "Biana Mcarthur"
+        "Biana Mcarthur",
+        "Bianca McArthur"  # Add more here
     ],
     "Bernadette Wykes": [
-        "Bernadette Wyatt"
+        "Bernadette Wyatt",
+        "Bernadette Wikes"  # Add more
     ],
     "David Pipe": [
-        "David Piupe"
+        "David Piupe",
+        "David Piper",  # Add more
+        "Dave Pipe"
+    ],
+    "New Agent Name": [  # Add entirely new agents
+        "Misspelling 1",
+        "Misspelling 2"
     ]
 }
 
