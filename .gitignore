@@ -35,6 +35,9 @@ call_analysis.db
 call_analysis.db-wal
 call_analysis.db-shm
 
+# Environment files with secrets (NEVER commit these)
+.env
+
 # Encryption keys
 encryption.key
 
@@ -55,8 +58,8 @@ __pycache__/transcriber.cpython-311.pyc
 call_analysis.db 
 CallAnalysisApp.zip 
 *.db 
-upload_to_hf.py 
-upload_to_hf.bat 
+# Note: upload_to_hf.py and upload_to_hf.bat are now safe to commit
+# They read tokens from environment variables, not hardcoded values
 hf_config.py 
 
  

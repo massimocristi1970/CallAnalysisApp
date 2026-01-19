@@ -1,6 +1,5 @@
-# Call Analysis App - Updated Requirements for Python 3.11-3.13
-# Last updated: 2025-12-03
-# Updated for Python 3.13 and PyTorch 2.5+ compatibility
+# Call Analysis App - Requirements for HuggingFace Spaces
+# Optimized for faster builds
 
 # Core Streamlit App
 streamlit>=1.28.0
@@ -9,19 +8,23 @@ streamlit>=1.28.0
 openai-whisper>=20231117
 pydub>=0.25.1
 
-# Machine Learning & NLP - Updated for Python 3.13 compatibility
-# PyTorch 2.5+ supports Python 3.13
-torch>=2.5.0
-torchvision>=0.21.0  
-torchaudio>=2.5.0
-numpy>=1.21.0,<2.1.0  # PyTorch 2.5+ supports NumPy 2.x
+# Machine Learning & NLP
+# Use CPU-only torch for faster install and smaller size on HF Spaces
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# Pin numpy to version with pre-built wheels (avoid building from source)
+numpy>=1.24.0,<2.0.0
+
+# NLP
 vaderSentiment>=3.3.2
 spacy>=3.7.0
 scikit-learn>=1.3.0
 
 # Text Processing & Matching
 fuzzywuzzy>=0.18.0
-python-Levenshtein>=0.21.0  # Fixes fuzzywuzzy performance warning
+python-Levenshtein>=0.21.0
 ftfy>=6.1.1
 
 # Configuration & Data
@@ -30,19 +33,12 @@ PyYAML>=6.0
 # PDF Generation
 fpdf2>=2.7.6
 
-# Security (Optional - can be disabled if installation issues)
+# Security
 cryptography>=41.0.0
 
-# Additional dependencies that may be auto-installed
-# but specified for clarity
-pathlib2>=2.3.5  # For older Python compatibility (Python <3.8)
-typing-extensions>=4.0.0  # For type hints
+# Type hints
+typing-extensions>=4.0.0
 
 # Dashboard dependencies
 plotly>=5.15.0
 pandas>=2.0.0
-
-# Development and debugging tools (optional)
-# Uncomment if needed for debugging
-# memory-profiler>=0.60.0
-# psutil>=5.9.0

@@ -8,11 +8,11 @@ echo   Upload Database to HuggingFace Spaces
 echo ====================================================
 echo.
 
-REM Change to CallAnalysisApp directory
-cd /d "C:\Dev\GitHub\CallAnalysisApp"
+REM Change to the script directory (works from any location)
+cd /d "%~dp0"
 
 REM Run upload script
-python upload_to_hf.py
+python "%~dp0upload_to_hf.py"
 
 echo.
 pause
