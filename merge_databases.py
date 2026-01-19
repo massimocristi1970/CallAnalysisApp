@@ -38,16 +38,48 @@ def merge_databases(local_db, hf_db):
         cursor = local_conn.execute("SELECT COUNT(*) FROM qa_scores")
         before_results = cursor.fetchone()[0]
 
-        # Merge calls table
+        # Merge calls table (HF schema has fewer columns than local)
         cursor = local_conn.execute("""
-            INSERT OR IGNORE INTO calls
-            SELECT * FROM hf.calls
+            INSERT OR IGNORE INTO calls (
+                call_id,
+                agent_id,
+                filename,
+                call_date,
+                call_type,
+                duration_minutes,
+                transcript,
+                sentiment,
+                processing_time_seconds,
+                file_size_mb,
+                created_at
+            )
+            SELECT call_id,
+                agent_id,
+                filename,
+                call_date,
+                call_type,
+                duration_minutes,
+                transcript,
+                sentiment,
+                processing_time_seconds,
+                file_size_mb,
+                created_at
+            FROM hf.calls
         """)
 
-        # Merge analysis_results table
-        cursor = local_conn.execute("""
-            INSERT OR IGNORE INTO qa_scores
-            SELECT * FROM hf.qa_scores
+        # Merge qa_scores table (schema-safe)
+        local_cols = [r[1] for r in local_conn.execute("PRAGMA table_info(qa_scores)").fetchall()]
+        hf_cols = [r[1] for r in local_conn.execute("PRAGMA table_info(hf.qa_scores)").fetchall()]
+        shared = [c for c in local_cols if c in hf_cols]
+
+        if not shared:
+            raise RuntimeError("No shared columns found between local qa_scores and hf.qa_scores")
+
+        cols_csv = ", ".join(shared)
+
+        cursor = local_conn.execute(f"""
+            INSERT OR IGNORE INTO qa_scores ({cols_csv})
+            SELECT {cols_csv} FROM hf.qa_scores
         """)
 
         local_conn.commit()
