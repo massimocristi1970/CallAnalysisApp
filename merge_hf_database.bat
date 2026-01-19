@@ -19,7 +19,8 @@ REM Change to the script directory
 cd /d "%~dp0"
 
 REM Run the merge script with Python
-python merge_databases.py
+python "%~dp0merge_databases.py"
+
 
 echo.
 echo ====================================================
