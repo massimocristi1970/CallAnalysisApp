@@ -21,11 +21,6 @@ def merge_databases(local_db, hf_db):
         print(f"❌ Error: HF database not found: {hf_db}")
         return False
 
-    # Backup local database first
-    backup_name = f"call_analysis_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
-    shutil.copy(local_db, backup_name)
-    print(f"✅ Backup created:  {backup_name}")
-
     try:
         # Connect to local database
         local_conn = sqlite3.connect(local_db)
@@ -104,10 +99,9 @@ def merge_databases(local_db, hf_db):
 
         return True
 
+
     except Exception as e:
         print(f"❌ Error during merge:  {e}")
-        print(f"⚠️ Restoring from backup:  {backup_name}")
-        shutil.copy(backup_name, local_db)
         return False
 
 
