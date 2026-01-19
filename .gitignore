@@ -34,6 +34,9 @@ call_analysis.db
 call_analysis.db-wal
 call_analysis.db-shm
 
+# Environment files with secrets (NEVER commit these)
+.env
+
 # Encryption keys
 encryption.key
 
