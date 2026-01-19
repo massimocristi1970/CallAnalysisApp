@@ -13,7 +13,7 @@ call_analysis_312/Lib/site-packages/.DS_Store
 call_analysis_312/
 call_analysis_env/
 venv/
-env/
+.env/
 .venv/
 *.venv
 
