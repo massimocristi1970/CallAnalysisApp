@@ -69,7 +69,7 @@ def merge_databases(local_db, hf_db):
 
         # Merge qa_scores table (schema-safe)
         local_cols = [r[1] for r in local_conn.execute("PRAGMA table_info(qa_scores)").fetchall()]
-        hf_cols = [r[1] for r in local_conn.execute("PRAGMA table_info(hf.qa_scores)").fetchall()]
+        hf_cols = [r[1] for r in local_conn.execute("PRAGMA hf.table_info(qa_scores)").fetchall()]
         shared = [c for c in local_cols if c in hf_cols]
 
         if not shared:
