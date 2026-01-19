@@ -14,6 +14,7 @@ call_analysis_312/
 call_analysis_env/
 venv/
 .env/
+env/
 .venv/
 *.venv
 
