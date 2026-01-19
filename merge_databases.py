@@ -35,7 +35,7 @@ def merge_databases(local_db, hf_db):
         cursor = local_conn.execute("SELECT COUNT(*) FROM calls")
         before_calls = cursor.fetchone()[0]
 
-        cursor = local_conn.execute("SELECT COUNT(*) FROM analysis_results")
+        cursor = local_conn.execute("SELECT COUNT(*) FROM qa_scores")
         before_results = cursor.fetchone()[0]
 
         # Merge calls table
@@ -46,8 +46,8 @@ def merge_databases(local_db, hf_db):
 
         # Merge analysis_results table
         cursor = local_conn.execute("""
-            INSERT OR IGNORE INTO analysis_results
-            SELECT * FROM hf.analysis_results
+            INSERT OR IGNORE INTO qa_scores
+            SELECT * FROM hf.qa_scores
         """)
 
         local_conn.commit()
@@ -56,7 +56,7 @@ def merge_databases(local_db, hf_db):
         cursor = local_conn.execute("SELECT COUNT(*) FROM calls")
         after_calls = cursor.fetchone()[0]
 
-        cursor = local_conn.execute("SELECT COUNT(*) FROM analysis_results")
+        cursor = local_conn.execute("SELECT COUNT(*) FROM qa_scores")
         after_results = cursor.fetchone()[0]
 
         local_conn.close()
