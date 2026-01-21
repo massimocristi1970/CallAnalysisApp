@@ -17,6 +17,9 @@ AGENT_CORRECTIONS = {
     "Bernadette Wykes": [
         "Bernadette Wyatt"
     ],
+"Bernadette Wykes": [
+        "Bernadette Wykes "
+    ],
     "David Pipe": [
         "David Piupe"
     ]
