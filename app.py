@@ -114,9 +114,9 @@ st.sidebar.title("⚙️ Configuration")
 st.sidebar.subheader("👤 Agent Information")
 
 # Agent name input
-agent_name = st.sidebar.text_input(
+agent_name = st.sidebar.date_input(
     "Agent Name",
-    value="",
+    ["Bianca Mcarthur", "Bernadette Wykes", "David Pipe"],
     help="Enter the agent's name for this call (required for database saving)"
 )
 
