@@ -113,7 +113,7 @@ st.sidebar.title("⚙️ Configuration")
 # NEW: Agent Information Section
 st.sidebar.subheader("👤 Agent Information")
 
-# Agent name input
+# Agent name selection
 agent_name = st.sidebar.selectbox(
     "Agent Name",
     ["Bianca Mcarthur", "Bernadette Wykes", "David Pipe"],
