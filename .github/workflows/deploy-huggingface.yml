@@ -27,7 +27,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Validate Hugging Face token
         run: |
@@ -36,12 +36,25 @@ jobs:
             exit 1
           fi
 
-      - name: Push repository to Hugging Face Space
+      - name: Build snapshot for Hugging Face
+        run: |
+          rm -rf hf-deploy
+          mkdir hf-deploy
+          git archive --format=tar HEAD | tar -xf - -C hf-deploy
+          rm -f hf-deploy/call_analysis.db
+          rm -f hf-deploy/CallAnalysisApp.zip
+
+      - name: Push snapshot to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           REPO_ID: ${{ matrix.repo_id }}
         run: |
+          cd hf-deploy
+          git init
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Deploy snapshot from GitHub Actions"
+          git branch -M main
           git remote add huggingface "https://oauth2:${HF_TOKEN}@huggingface.co/spaces/${REPO_ID}"
-          git push --force huggingface HEAD:main
+          git push --force huggingface main
