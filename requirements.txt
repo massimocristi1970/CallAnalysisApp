@@ -42,3 +42,6 @@ typing-extensions>=4.0.0
 # Dashboard dependencies
 plotly>=5.15.0
 pandas>=2.0.0
+
+# Postgres / Supabase
+psycopg2-binary>=2.9.9

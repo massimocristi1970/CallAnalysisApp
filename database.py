@@ -6,9 +6,20 @@ from typing import Dict, List, Any, Optional
 import json
 import os
 from pathlib import Path
+from database_postgres import PostgresCallAnalysisDB
 
 class CallAnalysisDB:
     """Database handler for call analysis data"""
+
+    def __new__(cls, db_path: str = "call_analysis.db"):
+        backend = os.getenv("DATABASE_BACKEND", "sqlite").strip().lower()
+        if backend in {"postgres", "postgresql", "supabase"}:
+            database_url = os.getenv("SUPABASE_DB_URL") or os.getenv("DATABASE_URL")
+            if not database_url:
+                raise ValueError("SUPABASE_DB_URL or DATABASE_URL must be set when DATABASE_BACKEND=postgres")
+            schema = os.getenv("DB_SCHEMA", "call_analysis")
+            return PostgresCallAnalysisDB(database_url=database_url, schema=schema)
+        return super().__new__(cls)
     
     def __init__(self, db_path: str = "call_analysis.db"):
         self.db_path = db_path
@@ -42,6 +53,9 @@ class CallAnalysisDB:
                     duration_minutes REAL,
                     transcript TEXT,
                     sentiment TEXT,
+                    customer_sentiment TEXT,
+                    customer_text_sample TEXT,
+                    customer_sentiment_confidence REAL,
                     processing_time_seconds REAL,
                     file_size_mb REAL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -69,10 +83,17 @@ class CallAnalysisDB:
                     call_id INTEGER,
                     scoring_method TEXT, -- 'rule_based' or 'nlp_enhanced'
                     category TEXT NOT NULL,
-                    score INTEGER NOT NULL,
+                    score REAL NOT NULL,
                     confidence REAL,
                     explanation TEXT,
                     matched_phrase TEXT,
+                    holistic_score REAL,
+                    frequency REAL,
+                    frequency_score REAL,
+                    semantic_quality REAL,
+                    distribution REAL,
+                    details_json TEXT,
+                    text_scope TEXT,
                     FOREIGN KEY (call_id) REFERENCES calls (call_id)
                 )
             """)
@@ -102,6 +123,24 @@ class CallAnalysisDB:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_qa_scores_call ON qa_scores (call_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_keywords_call ON keywords (call_id)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_monthly_summaries_agent ON monthly_summaries (agent_id, year, month)")
+
+            migration_statements = [
+                "ALTER TABLE calls ADD COLUMN customer_sentiment TEXT",
+                "ALTER TABLE calls ADD COLUMN customer_text_sample TEXT",
+                "ALTER TABLE calls ADD COLUMN customer_sentiment_confidence REAL",
+                "ALTER TABLE qa_scores ADD COLUMN holistic_score REAL",
+                "ALTER TABLE qa_scores ADD COLUMN frequency REAL",
+                "ALTER TABLE qa_scores ADD COLUMN frequency_score REAL",
+                "ALTER TABLE qa_scores ADD COLUMN semantic_quality REAL",
+                "ALTER TABLE qa_scores ADD COLUMN distribution REAL",
+                "ALTER TABLE qa_scores ADD COLUMN details_json TEXT",
+                "ALTER TABLE qa_scores ADD COLUMN text_scope TEXT"
+            ]
+            for statement in migration_statements:
+                try:
+                    cursor.execute(statement)
+                except sqlite3.OperationalError:
+                    pass
             
             conn.commit()
     
@@ -122,19 +161,16 @@ class CallAnalysisDB:
         """Save complete call analysis to database"""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            
-            # Get or create agent
-            agent_id = self.add_agent(agent_name)
-            
-            # Extract metadata
+
+            agent_id = self.add_agent(agent_name, call_data.get("department"))
             metadata = call_data.get('metadata', {})
-            
-            # Insert call record
+
             cursor.execute("""
                 INSERT INTO calls (
                     agent_id, filename, call_date, call_type, duration_minutes,
-                    transcript, sentiment, processing_time_seconds, file_size_mb
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    transcript, sentiment, customer_sentiment, customer_text_sample,
+                    customer_sentiment_confidence, processing_time_seconds, file_size_mb
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 agent_id,
                 call_data['filename'],
@@ -142,14 +178,16 @@ class CallAnalysisDB:
                 call_data.get('call_type', 'Unknown'),
                 metadata.get('duration_minutes', 0),
                 call_data['transcript'],
-                call_data['sentiment'],
+                call_data.get('sentiment', 'Unknown'),
+                call_data.get('customer_sentiment', 'unknown'),
+                call_data.get('customer_text_sample', ''),
+                call_data.get('customer_sentiment_confidence', 0),
                 call_data.get('processing_time', 0),
                 metadata.get('file_size_mb', 0)
             ))
-            
+
             call_id = cursor.lastrowid
-            
-            # Save keywords
+
             for keyword in call_data.get('keywords_enhanced', []):
                 cursor.execute("""
                     INSERT INTO keywords (call_id, keyword_phrase, confidence, priority, match_type)
@@ -161,63 +199,102 @@ class CallAnalysisDB:
                     keyword.get('priority', 'medium'),
                     keyword.get('match_type', 'exact')
                 ))
-            
-            # Save QA scores - Rule-based
+
             for category, result in call_data.get('qa_results', {}).items():
                 cursor.execute("""
-                    INSERT INTO qa_scores (call_id, scoring_method, category, score, confidence, explanation, matched_phrase)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO qa_scores (
+                        call_id, scoring_method, category, score, confidence, explanation,
+                        matched_phrase, holistic_score, frequency, frequency_score,
+                        semantic_quality, distribution, details_json, text_scope
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    call_id, 'rule_based', category, result['score'],
-                    result.get('confidence', 0), result['explanation'],
-                    result.get('matched_phrase', '')
+                    call_id,
+                    'rule_based',
+                    category,
+                    result['score'],
+                    result.get('confidence', 0),
+                    result['explanation'],
+                    result.get('matched_phrase', ''),
+                    result.get('holistic_score', result.get('score', 0)),
+                    result.get('frequency', 0),
+                    result.get('frequency_score'),
+                    result.get('semantic_quality'),
+                    result.get('distribution'),
+                    json.dumps(result.get('details', {})),
+                    result.get('text_scope', 'agent_only')
                 ))
-            
-            # Save QA scores - NLP Enhanced
+
             for category, result in call_data.get('qa_results_nlp', {}).items():
                 cursor.execute("""
-                    INSERT INTO qa_scores (call_id, scoring_method, category, score, confidence, explanation, matched_phrase)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO qa_scores (
+                        call_id, scoring_method, category, score, confidence, explanation,
+                        matched_phrase, holistic_score, frequency, frequency_score,
+                        semantic_quality, distribution, details_json, text_scope
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
-                    call_id, 'nlp_enhanced', category, result['score'],
-                    result.get('confidence', 0), result['explanation'],
-                    result.get('matched_phrase', '')
+                    call_id,
+                    'nlp_enhanced',
+                    category,
+                    result['score'],
+                    result.get('confidence', 0),
+                    result['explanation'],
+                    result.get('matched_phrase', ''),
+                    result.get('holistic_score', result.get('score', 0)),
+                    result.get('frequency', 0),
+                    result.get('frequency_score'),
+                    result.get('semantic_quality'),
+                    result.get('distribution'),
+                    json.dumps(result.get('details', {})),
+                    result.get('text_scope', 'agent_only')
                 ))
-            
+
             conn.commit()
-            
-            # Update monthly summary
             self.update_monthly_summary(agent_id, call_data.get('call_date', date.today()))
-            
             return call_id
     
     def update_monthly_summary(self, agent_id: int, call_date: date):
         """Update monthly summary for an agent"""
         year, month = call_date.year, call_date.month
-        
+
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            
-            # Calculate monthly stats
+
             cursor.execute("""
                 SELECT 
                     COUNT(*) as total_calls,
-                    AVG(CASE WHEN qs.scoring_method = 'rule_based' THEN qs.score END) as avg_rule_score,
-                    AVG(CASE WHEN qs.scoring_method = 'nlp_enhanced' THEN qs.score END) as avg_nlp_score,
-                    SUM(c.duration_minutes) as total_duration,
-                    SUM(CASE WHEN c.sentiment = 'Positive' THEN 1 ELSE 0 END) as positive_count,
-                    SUM(CASE WHEN c.sentiment = 'Negative' THEN 1 ELSE 0 END) as negative_count,
-                    SUM(CASE WHEN c.sentiment = 'Neutral' THEN 1 ELSE 0 END) as neutral_count
+                    COALESCE(SUM(c.duration_minutes), 0) as total_duration,
+                    SUM(CASE WHEN LOWER(COALESCE(c.customer_sentiment, c.sentiment, '')) = 'positive' THEN 1 ELSE 0 END) as positive_count,
+                    SUM(CASE WHEN LOWER(COALESCE(c.customer_sentiment, c.sentiment, '')) = 'negative' THEN 1 ELSE 0 END) as negative_count,
+                    SUM(CASE WHEN LOWER(COALESCE(c.customer_sentiment, c.sentiment, '')) = 'neutral' THEN 1 ELSE 0 END) as neutral_count
                 FROM calls c
-                LEFT JOIN qa_scores qs ON c.call_id = qs.call_id
-                WHERE c.agent_id = ? 
-                AND strftime('%Y', c.call_date) = ? 
+                WHERE c.agent_id = ?
+                AND strftime('%Y', c.call_date) = ?
                 AND strftime('%m', c.call_date) = ?
             """, (agent_id, str(year), f"{month:02d}"))
-            
-            stats = cursor.fetchone()
-            
-            # Insert or update monthly summary
+            call_stats = cursor.fetchone()
+
+            cursor.execute("""
+                SELECT 
+                    AVG(CASE WHEN qs.scoring_method = 'rule_based' THEN qs.score END) as avg_rule_score,
+                    AVG(CASE WHEN qs.scoring_method = 'nlp_enhanced' THEN COALESCE(qs.holistic_score, qs.score) END) as avg_nlp_score
+                FROM qa_scores qs
+                JOIN calls c ON qs.call_id = c.call_id
+                WHERE c.agent_id = ?
+                AND strftime('%Y', c.call_date) = ?
+                AND strftime('%m', c.call_date) = ?
+            """, (agent_id, str(year), f"{month:02d}"))
+            score_stats = cursor.fetchone()
+
+            stats = (
+                call_stats[0] or 0,
+                score_stats[0] or 0,
+                score_stats[1] or 0,
+                call_stats[1] or 0,
+                call_stats[2] or 0,
+                call_stats[3] or 0,
+                call_stats[4] or 0,
+            )
+
             cursor.execute("""
                 INSERT OR REPLACE INTO monthly_summaries (
                     agent_id, year, month, total_calls, avg_rule_score, avg_nlp_score,
@@ -225,7 +302,7 @@ class CallAnalysisDB:
                     negative_sentiment_count, neutral_sentiment_count, last_updated
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             """, (agent_id, year, month, *stats))
-            
+
             conn.commit()
     
     def get_agent_scores_by_month(self, agent_name: str = None, year: int = None) -> pd.DataFrame:
@@ -263,66 +340,90 @@ class CallAnalysisDB:
     def get_dashboard_data(self, start_date: date = None, end_date: date = None) -> Dict[str, Any]:
         """Get comprehensive dashboard data"""
         if not start_date:
-            start_date = date.today().replace(month=1, day=1)  # Start of current year
+            start_date = date.today().replace(month=1, day=1)
         if not end_date:
             end_date = date.today()
-        
+
         with sqlite3.connect(self.db_path) as conn:
-            # Overall metrics
-            overview_query = """
+            overview_calls_query = """
                 SELECT 
                     COUNT(DISTINCT c.agent_id) as total_agents,
-                    COUNT(c.call_id) as total_calls,
-                    AVG(CASE WHEN qs.scoring_method = 'rule_based' THEN qs.score END) as avg_rule_score,
-                    AVG(CASE WHEN qs.scoring_method = 'nlp_enhanced' THEN qs.score END) as avg_nlp_score,
-                    SUM(c.duration_minutes) as total_duration_minutes
+                    COUNT(*) as total_calls,
+                    COALESCE(SUM(c.duration_minutes), 0) as total_duration_minutes
                 FROM calls c
-                LEFT JOIN qa_scores qs ON c.call_id = qs.call_id
                 WHERE c.call_date BETWEEN ? AND ?
             """
-            overview = pd.read_sql_query(overview_query, conn, params=[start_date, end_date])
-            
-            # Agent performance
+            overview_calls = pd.read_sql_query(overview_calls_query, conn, params=[start_date, end_date])
+
+            overview_scores_query = """
+                SELECT 
+                    AVG(CASE WHEN qs.scoring_method = 'rule_based' THEN qs.score END) as avg_rule_score,
+                    AVG(CASE WHEN qs.scoring_method = 'nlp_enhanced' THEN COALESCE(qs.holistic_score, qs.score) END) as avg_nlp_score
+                FROM qa_scores qs
+                JOIN calls c ON qs.call_id = c.call_id
+                WHERE c.call_date BETWEEN ? AND ?
+            """
+            overview_scores = pd.read_sql_query(overview_scores_query, conn, params=[start_date, end_date])
+            overview = {
+                **(overview_calls.to_dict('records')[0] if not overview_calls.empty else {}),
+                **(overview_scores.to_dict('records')[0] if not overview_scores.empty else {})
+            }
+
             agent_performance_query = """
+                WITH scores_by_call AS (
+                    SELECT 
+                        qs.call_id,
+                        AVG(CASE WHEN qs.scoring_method = 'rule_based' THEN qs.score END) as rule_score,
+                        AVG(CASE WHEN qs.scoring_method = 'nlp_enhanced' THEN COALESCE(qs.holistic_score, qs.score) END) as nlp_score
+                    FROM qa_scores qs
+                    GROUP BY qs.call_id
+                )
                 SELECT 
                     a.agent_name,
                     a.department,
                     COUNT(c.call_id) as total_calls,
-                    AVG(CASE WHEN qs.scoring_method = 'rule_based' THEN qs.score END) as avg_rule_score,
-                    AVG(CASE WHEN qs.scoring_method = 'nlp_enhanced' THEN qs.score END) as avg_nlp_score,
-                    SUM(c.duration_minutes) as total_duration_minutes,
-                    SUM(CASE WHEN c.sentiment = 'Positive' THEN 1 ELSE 0 END) as positive_calls,
-                    SUM(CASE WHEN c.sentiment = 'Negative' THEN 1 ELSE 0 END) as negative_calls
+                    AVG(sbc.rule_score) as avg_rule_score,
+                    AVG(sbc.nlp_score) as avg_nlp_score,
+                    COALESCE(SUM(c.duration_minutes), 0) as total_duration_minutes,
+                    SUM(CASE WHEN LOWER(COALESCE(c.customer_sentiment, c.sentiment, '')) = 'positive' THEN 1 ELSE 0 END) as positive_calls,
+                    SUM(CASE WHEN LOWER(COALESCE(c.customer_sentiment, c.sentiment, '')) = 'negative' THEN 1 ELSE 0 END) as negative_calls
                 FROM agents a
-                LEFT JOIN calls c ON a.agent_id = c.agent_id
-                LEFT JOIN qa_scores qs ON c.call_id = qs.call_id
-                WHERE a.is_active = 1 AND c.call_date BETWEEN ? AND ?
-                GROUP BY a.agent_id
+                LEFT JOIN calls c ON a.agent_id = c.agent_id AND c.call_date BETWEEN ? AND ?
+                LEFT JOIN scores_by_call sbc ON c.call_id = sbc.call_id
+                WHERE a.is_active = 1
+                GROUP BY a.agent_id, a.agent_name, a.department
+                HAVING COUNT(c.call_id) > 0
                 ORDER BY avg_rule_score DESC
             """
             agent_performance = pd.read_sql_query(agent_performance_query, conn, params=[start_date, end_date])
-            
-            # Monthly trends
+
             monthly_trends_query = """
+                WITH scores_by_call AS (
+                    SELECT 
+                        qs.call_id,
+                        AVG(CASE WHEN qs.scoring_method = 'rule_based' THEN qs.score END) as rule_score,
+                        AVG(CASE WHEN qs.scoring_method = 'nlp_enhanced' THEN COALESCE(qs.holistic_score, qs.score) END) as nlp_score
+                    FROM qa_scores qs
+                    GROUP BY qs.call_id
+                )
                 SELECT 
                     strftime('%Y-%m', c.call_date) as month,
-                    COUNT(c.call_id) as total_calls,
-                    AVG(CASE WHEN qs.scoring_method = 'rule_based' THEN qs.score END) as avg_rule_score,
-                    AVG(CASE WHEN qs.scoring_method = 'nlp_enhanced' THEN qs.score END) as avg_nlp_score
+                    COUNT(*) as total_calls,
+                    AVG(sbc.rule_score) as avg_rule_score,
+                    AVG(sbc.nlp_score) as avg_nlp_score
                 FROM calls c
-                LEFT JOIN qa_scores qs ON c.call_id = qs.call_id
+                LEFT JOIN scores_by_call sbc ON c.call_id = sbc.call_id
                 WHERE c.call_date BETWEEN ? AND ?
                 GROUP BY strftime('%Y-%m', c.call_date)
                 ORDER BY month
             """
             monthly_trends = pd.read_sql_query(monthly_trends_query, conn, params=[start_date, end_date])
-            
-            # Category breakdown
+
             category_breakdown_query = """
                 SELECT 
                     qs.category,
                     qs.scoring_method,
-                    AVG(qs.score) as avg_score,
+                    AVG(CASE WHEN qs.scoring_method = 'nlp_enhanced' THEN COALESCE(qs.holistic_score, qs.score) ELSE qs.score END) as avg_score,
                     COUNT(*) as total_evaluations
                 FROM qa_scores qs
                 JOIN calls c ON qs.call_id = c.call_id
@@ -331,9 +432,9 @@ class CallAnalysisDB:
                 ORDER BY qs.category, qs.scoring_method
             """
             category_breakdown = pd.read_sql_query(category_breakdown_query, conn, params=[start_date, end_date])
-            
+
             return {
-                'overview': overview.to_dict('records')[0] if not overview.empty else {},
+                'overview': overview,
                 'agent_performance': agent_performance,
                 'monthly_trends': monthly_trends,
                 'category_breakdown': category_breakdown

@@ -22,6 +22,7 @@ from pdf_exporter import generate_pdf_report, generate_combined_pdf_report
 
 # Add these two lines after your existing imports
 from database import CallAnalysisDB
+from customer_sentiment import get_customer_sentiment_analysis
 from datetime import date
 
 # Set up logging
@@ -394,14 +395,36 @@ if uploaded_files:
                     
                     # Sentiment analysis
                     sentiment = get_sentiment(transcript)
+                    customer_sentiment_analysis = get_customer_sentiment_analysis(transcript)
+                    customer_sentiment = customer_sentiment_analysis.get('customer_sentiment', 'unknown')
+                    customer_sentiment_confidence = customer_sentiment_analysis.get('confidence', 0.0)
+                    customer_text_sample = customer_sentiment_analysis.get('customer_text_sample', '')
+
                     sentiment_color = {
                         'Positive': '#28a745',
                         'Negative': '#dc3545', 
                         'Neutral': '#6c757d'
                     }.get(sentiment, '#6c757d')
-                    
-                    st.markdown(f"**😊 Sentiment:** <span style='color: {sentiment_color}; font-weight: bold;'>{sentiment}</span>", 
-                               unsafe_allow_html=True)
+                    customer_sentiment_label = customer_sentiment.title() if customer_sentiment else 'Unknown'
+                    customer_sentiment_color = {
+                        'positive': '#28a745',
+                        'negative': '#dc3545',
+                        'neutral': '#6c757d',
+                        'unknown': '#6c757d'
+                    }.get(customer_sentiment, '#6c757d')
+
+                    sentiment_col1, sentiment_col2 = st.columns(2)
+                    with sentiment_col1:
+                        st.markdown(
+                            f"**😊 Overall Call Sentiment:** <span style='color: {sentiment_color}; font-weight: bold;'>{sentiment}</span>",
+                            unsafe_allow_html=True
+                        )
+                    with sentiment_col2:
+                        st.markdown(
+                            f"**🗣️ Customer Sentiment:** <span style='color: {customer_sentiment_color}; font-weight: bold;'>{customer_sentiment_label}</span> "
+                            f"<span style='color: #6c757d;'>(confidence: {customer_sentiment_confidence:.2f})</span>",
+                            unsafe_allow_html=True
+                        )
                     
                     # Enhanced keywords display
                     if keyword_matches:
@@ -499,8 +522,12 @@ if uploaded_files:
                                 "filename": uploaded_file.name,
                                 "call_date": call_date,
                                 "call_type": call_type,
+                                "department": department,
                                 "transcript": transcript,
                                 "sentiment": sentiment,
+                                "customer_sentiment": customer_sentiment,
+                                "customer_sentiment_confidence": customer_sentiment_confidence,
+                                "customer_text_sample": customer_text_sample,
                                 "keywords": [match["phrase"] for match in keyword_matches],
                                 "keywords_enhanced": keyword_matches,
                                 "qa_results": qa_results,
@@ -525,6 +552,9 @@ if uploaded_files:
                                 "filename": uploaded_file.name,
                                 "transcript": transcript,
                                 "sentiment": sentiment,
+                                "customer_sentiment": customer_sentiment,
+                                "customer_sentiment_confidence": customer_sentiment_confidence,
+                                "customer_text_sample": customer_text_sample,
                                 "keywords": [match["phrase"] for match in keyword_matches],
                                 "qa_results": qa_results,
                                 "qa_results_nlp": qa_results_nlp,
@@ -571,12 +601,12 @@ if uploaded_files:
             with col3:
                 total_rule_score = sum(sum(call['qa_results'][section]['score'] for section in call['qa_results']) 
                                      for call in st.session_state["summary_pdfs"])
-                max_rule_score = len(st.session_state["summary_pdfs"]) * 5  # Assuming 5 categories
+                max_rule_score = sum(len(call["qa_results"]) for call in st.session_state["summary_pdfs"])
                 st.metric("Overall Rule Score", f"{total_rule_score}/{max_rule_score}")
             with col4:
                 total_nlp_score = sum(sum(call['qa_results_nlp'][section]['score'] for section in call['qa_results_nlp']) 
                                     for call in st.session_state["summary_pdfs"])
-                max_nlp_score = len(st.session_state["summary_pdfs"]) * 5  # Assuming 5 categories
+                max_nlp_score = sum(len(call["qa_results_nlp"]) for call in st.session_state["summary_pdfs"])
                 st.metric("Overall NLP Score", f"{total_nlp_score}/{max_nlp_score}")
 
 # PDF Export section
@@ -647,7 +677,11 @@ if st.sidebar.checkbox("🧪 Test Mode"):
             
             # Sentiment analysis
             sentiment = get_sentiment(test_transcript)
-            st.markdown(f"**😊 Sentiment:** {sentiment}")
+            customer_sentiment_analysis = get_customer_sentiment_analysis(test_transcript)
+            customer_sentiment = customer_sentiment_analysis.get('customer_sentiment', 'unknown')
+            customer_sentiment_confidence = customer_sentiment_analysis.get('confidence', 0.0)
+            st.markdown(f"**😊 Overall Call Sentiment:** {sentiment}")
+            st.markdown(f"**🗣️ Customer Sentiment:** {customer_sentiment.title()} (confidence: {customer_sentiment_confidence:.2f})")
             
             # Enhanced keyword detection
             keywords_found = find_keywords_enhanced(test_transcript)

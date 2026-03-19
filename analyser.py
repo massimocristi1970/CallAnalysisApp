@@ -9,6 +9,7 @@ import streamlit as st
 import numpy as np
 from typing import Dict, List, Tuple, Any
 import hashlib
+from customer_sentiment import identify_agent_segments
 try:
     from cryptography.fernet import Fernet
     CRYPTOGRAPHY_AVAILABLE = True
@@ -102,6 +103,58 @@ def get_sentiment(text: str) -> str:
         return "Negative"
     else:  # Middle 33%
         return "Neutral"
+
+
+DEFAULT_CALL_TYPE_CATEGORY_MAP = {
+    "customer service": [
+        "Customer Understanding",
+        "Fair Treatment",
+        "Resolution & Support"
+    ],
+    "collections": [
+        "Customer Understanding",
+        "Fair Treatment",
+        "Vulnerability Handling",
+        "Financial Difficulty",
+        "Resolution & Support"
+    ],
+    "sales": [
+        "Customer Understanding",
+        "Fair Treatment",
+        "Resolution & Support"
+    ],
+    "support": [
+        "Customer Understanding",
+        "Fair Treatment",
+        "Resolution & Support"
+    ]
+}
+
+
+def get_agent_scoring_text(text: str) -> str:
+    """Prefer agent-only content for QA scoring, with a safe fallback to the full transcript."""
+    agent_text = identify_agent_segments(text)
+    return agent_text.strip() if agent_text and agent_text.strip() else text
+
+
+def get_scoring_categories(call_type: str, available_categories: List[str]) -> List[str]:
+    """Return the categories that apply to the selected call type."""
+    config = load_config()
+    configured_map = config.get('call_type_category_map', {})
+    normalized_map = {
+        str(key).strip().lower(): value
+        for key, value in configured_map.items()
+        if isinstance(value, list)
+    }
+    call_type_key = (call_type or '').strip().lower()
+    desired_categories = normalized_map.get(call_type_key) or DEFAULT_CALL_TYPE_CATEGORY_MAP.get(call_type_key)
+
+    if not desired_categories:
+        return list(available_categories)
+
+    available_set = set(available_categories)
+    filtered_categories = [category for category in desired_categories if category in available_set]
+    return filtered_categories or list(available_categories)
 
 def redact_pii(text: str) -> str:
     """Redact personally identifiable information from text"""
@@ -330,42 +383,44 @@ def score_call_rule_based(text: str, call_type: str) -> Dict[str, Dict[str, Any]
     """
     config = load_config()
     agent_phrases = config.get('agent_behaviour_phrases', {})
-    
-    # Frequency thresholds
+    categories = get_scoring_categories(call_type, list(agent_phrases.keys()))
+
     min_full = config.get('scoring', {}).get('min_frequency_for_full_score', 2)
     min_partial = config.get('scoring', {}).get('min_frequency_for_partial_score', 1)
-    
-    transcript = text.lower()
+
+    transcript = get_agent_scoring_text(text).lower()
     scores = {}
-    
-    for category, phrases in agent_phrases.items():
-        # Count occurrences with frequency tracking
+
+    for category in categories:
+        phrases = agent_phrases.get(category, [])
         occurrence_data = count_phrase_occurrences(phrases, transcript, use_semantic=False)
-        
+
         frequency = occurrence_data['frequency']
         matches = occurrence_data['matches']
         avg_confidence = occurrence_data['avg_confidence']
-        
-        # Calculate score based on frequency
+        matched_phrase = matches[0]['phrase'] if matches else ''
+
         if frequency >= min_full:
-            score = 1.0  # Full credit
-            explanation = f"Agent demonstrated {category.lower()} {frequency} times (excellent - {', '.join(set([m['phrase'] for m in matches[:3]]))}...)"
+            score = 1.0
+            top_matches = ', '.join(sorted({m['phrase'] for m in matches[:3]}))
+            explanation = f"Agent demonstrated {category.lower()} {frequency} times (excellent - {top_matches}...)"
         elif frequency >= min_partial:
-            score = 0.5  # Partial credit
-            matched_phrase = matches[0]['phrase'] if matches else 'unknown'
+            score = 0.5
             explanation = f"Agent demonstrated {category.lower()} {frequency} time(s) (needs improvement - mentioned '{matched_phrase}')"
         else:
-            score = 0.0  # No credit
+            score = 0.0
             explanation = f"No evidence of agent demonstrating {category.lower()}"
-        
+
         scores[category] = {
             "score": score,
             "frequency": frequency,
             "confidence": avg_confidence,
-            "matches": [m['phrase'] for m in matches[:5]],  # Store up to 5 matches
-            "explanation": explanation
+            "matches": [m['phrase'] for m in matches[:5]],
+            "matched_phrase": matched_phrase,
+            "explanation": explanation,
+            "text_scope": "agent_only"
         }
-    
+
     return scores
 
 def score_call_nlp_enhanced(text: str, call_type: str) -> Dict[str, Dict[str, Any]]:
@@ -376,88 +431,71 @@ def score_call_nlp_enhanced(text: str, call_type: str) -> Dict[str, Dict[str, An
     config = load_config()
     agent_phrases = config.get('agent_behaviour_phrases', {})
     nlp_concepts = config.get('nlp_concepts', {})
-    
-    # Get weights from config
+    categories = get_scoring_categories(call_type, list(agent_phrases.keys()))
+
     freq_weight = config.get('scoring', {}).get('nlp_frequency_weight', 0.4)
     semantic_weight = config.get('scoring', {}).get('nlp_semantic_weight', 0.35)
     distribution_weight = config.get('scoring', {}).get('nlp_distribution_weight', 0.25)
-    
-    # Estimate call length from text (rough: ~150 words per minute)
-    word_count = len(text.split())
-    estimated_minutes = word_count / 150
-    
-    # Adjust frequency expectations based on call length
+
+    scoring_text = get_agent_scoring_text(text)
+    word_count = len(scoring_text.split())
+    estimated_minutes = word_count / 150 if word_count else 0
+
     if estimated_minutes < 5:
-        expected_frequency = 1  # Short call
+        expected_frequency = 1
     elif estimated_minutes < 15:
-        expected_frequency = 2  # Medium call
+        expected_frequency = 2
     else:
-        expected_frequency = 3  # Long call
-    
-    transcript_lower = text.lower()
+        expected_frequency = 3
+
+    transcript_lower = scoring_text.lower()
     scores = {}
-    
+
     try:
         nlp = load_spacy_model()
-        doc = nlp(text)
-        
-        # Extract conversation-wide features
+        doc = nlp(scoring_text)
         entities = [ent.text.lower() for ent in doc.ents]
-        noun_phrases = [chunk.text.lower() for chunk in doc.noun_chunks]
-        
-        for category in agent_phrases.keys():
-            # 1. FREQUENCY COMPONENT: Count phrase occurrences
+
+        for category in categories:
             phrase_data = count_phrase_occurrences(
-                agent_phrases.get(category, []), 
-                transcript_lower, 
+                agent_phrases.get(category, []),
+                transcript_lower,
                 use_semantic=True
             )
             phrase_frequency = phrase_data['frequency']
             phrase_distribution = phrase_data['distribution']
             phrase_confidence = phrase_data['avg_confidence']
-            
-            # 2. SEMANTIC COMPONENT: Check NLP concepts
+
             concept_data = count_phrase_occurrences(
-                nlp_concepts.get(category, []), 
-                transcript_lower, 
+                nlp_concepts.get(category, []),
+                transcript_lower,
                 use_semantic=True
             )
             concept_frequency = concept_data['frequency']
             concept_confidence = concept_data['avg_confidence']
-            
-            # 3. ENTITY RELEVANCE: Check if relevant entities present
+
             entity_relevance = 0.0
             if entities:
-                relevant_entities = [e for e in entities if category.lower().split()[0] in e or 
-                                    any(concept.lower() in e for concept in nlp_concepts.get(category, [])[:5])]
-                entity_relevance = min(len(relevant_entities) / 3, 1.0)  # Cap at 1.0
-            
-            # Combine frequencies
+                relevant_entities = [
+                    entity for entity in entities
+                    if category.lower().split()[0] in entity
+                    or any(concept.lower() in entity for concept in nlp_concepts.get(category, [])[:5])
+                ]
+                entity_relevance = min(len(relevant_entities) / 3, 1.0)
+
             total_frequency = phrase_frequency + concept_frequency
-            
-            # Calculate normalized frequency score (0-1.0)
-            frequency_score = min(total_frequency / expected_frequency, 1.0)
-            
-            # Calculate semantic quality score (0-1.0)
+            frequency_score = min(total_frequency / expected_frequency, 1.0) if expected_frequency else 0.0
             semantic_quality = max(phrase_confidence, concept_confidence, entity_relevance)
-            
-            # Distribution score already 0-1.0
             distribution_score = max(phrase_distribution, concept_data['distribution'])
-            
-            # OPTION A FORMULA: Weighted combination
-            final_score = (
-                (frequency_score * freq_weight) +
-                (semantic_quality * semantic_weight) +
-                (distribution_score * distribution_weight)
+
+            final_score = min(
+                (frequency_score * freq_weight)
+                + (semantic_quality * semantic_weight)
+                + (distribution_score * distribution_weight),
+                1.0
             )
-            
-            # Cap at 1.0
-            final_score = min(final_score, 1.0)
-            
-            # Determine binary pass/fail (>0.6 = pass)
             binary_score = 1 if final_score >= 0.6 else 0
-            
-            # Create detailed explanation
+
             explanation_parts = []
             if phrase_frequency > 0:
                 explanation_parts.append(f"phrase frequency: {phrase_frequency}")
@@ -467,21 +505,24 @@ def score_call_nlp_enhanced(text: str, call_type: str) -> Dict[str, Dict[str, An
                 explanation_parts.append(f"entity relevance: {entity_relevance:.2f}")
             explanation_parts.append(f"distribution: {distribution_score:.2f}")
             explanation_parts.append(f"quality: {semantic_quality:.2f}")
-            
+
             explanation = (
                 f"NLP holistic score: {final_score:.2f} for {category.lower()} "
                 f"({', '.join(explanation_parts)})"
             )
-            
+
+            top_phrase = phrase_data['matches'][0]['phrase'] if phrase_data['matches'] else ''
             scores[category] = {
                 "score": binary_score,
-                "holistic_score": final_score,  # NEW: 0-1.0 quality score
+                "holistic_score": final_score,
                 "confidence": final_score,
                 "frequency": total_frequency,
                 "frequency_score": frequency_score,
                 "semantic_quality": semantic_quality,
                 "distribution": distribution_score,
+                "matched_phrase": top_phrase,
                 "explanation": explanation,
+                "text_scope": "agent_only",
                 "details": {
                     "phrase_frequency": phrase_frequency,
                     "concept_frequency": concept_frequency,
@@ -490,11 +531,11 @@ def score_call_nlp_enhanced(text: str, call_type: str) -> Dict[str, Dict[str, An
                     "estimated_call_minutes": round(estimated_minutes, 1)
                 }
             }
-    
+
     except Exception as e:
         print(f"Warning: NLP analysis failed, falling back to rule-based: {e}")
         return score_call_rule_based(text, call_type)
-    
+
     return scores
 
 def extract_nlp_insights(text: str) -> Dict[str, Any]:

@@ -1,0 +1,47 @@
+name: Deploy To Hugging Face
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: huggingface-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Sync ${{ matrix.space_name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo_id: massimocristi1970/call-analysis-app
+            space_name: call-analysis-app
+          - repo_id: massimocristi1970/call-analysis-dashboard
+            space_name: call-analysis-dashboard
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Hugging Face token
+        run: |
+          if [ -z "${{ secrets.HF_TOKEN }}" ]; then
+            echo "HF_TOKEN GitHub secret is not set."
+            exit 1
+          fi
+
+      - name: Push repository to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          REPO_ID: ${{ matrix.repo_id }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add huggingface "https://oauth2:${HF_TOKEN}@huggingface.co/spaces/${REPO_ID}"
+          git push --force huggingface HEAD:main

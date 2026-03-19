@@ -23,6 +23,26 @@ scoring:
   medium_call_threshold: 15 # 5-15 min = medium call
   long_call_threshold: 15 # Over 15 min = long call
 
+call_type_category_map:
+  Customer Service:
+    - "Customer Understanding"
+    - "Fair Treatment"
+    - "Resolution & Support"
+  Collections:
+    - "Customer Understanding"
+    - "Fair Treatment"
+    - "Vulnerability Handling"
+    - "Financial Difficulty"
+    - "Resolution & Support"
+  Sales:
+    - "Customer Understanding"
+    - "Fair Treatment"
+    - "Resolution & Support"
+  Support:
+    - "Customer Understanding"
+    - "Fair Treatment"
+    - "Resolution & Support"
+
 # Agent behavior phrases for rule-based scoring
 agent_behaviour_phrases:
   Customer Understanding:

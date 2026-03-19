@@ -7,10 +7,11 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 try:
     from transformers import pipeline
     _TRANSFORMER_AVAILABLE = True
-    _TRANSFORMER_PIPE = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 except Exception:
+    pipeline = None
     _TRANSFORMER_AVAILABLE = False
-    _TRANSFORMER_PIPE = None
+
+_TRANSFORMER_PIPE = None
 
 analyzer = SentimentIntensityAnalyzer()
 
@@ -219,79 +220,141 @@ def extract_customer_from_labeled_transcript(transcript: str) -> str:
             customer_lines.append(inline.group(2).strip())
     return " ".join(customer_lines).strip()
 
+def extract_agent_from_labeled_transcript(transcript: str) -> str:
+    """Return concatenated lines explicitly labeled as agent (if present)."""
+    lines = transcript.splitlines()
+    agent_lines = []
+    for line in lines:
+        m = AGENT_LABEL_RE.match(line)
+        if m:
+            agent_lines.append(m.group(1).strip())
+            continue
+        m = BRACKET_SPEAKER_RE.match(line)
+        if m and m.group(1).lower().startswith(("a", "r")):
+            agent_lines.append(m.group(2).strip())
+            continue
+        inline = re.search(r'\b(agent|rep|advisor|operator|consultant)[:\-\]]\s*(.*)', line, re.IGNORECASE)
+        if inline:
+            agent_lines.append(inline.group(2).strip())
+    return " ".join(agent_lines).strip()
+
+
+def _score_segment(segment: str) -> Tuple[int, int]:
+    """Score a segment for agent/customer likelihood using phrase matches."""
+    cleaned = segment.strip()
+    lowered = cleaned.lower()
+    if not cleaned:
+        return 0, 0
+
+    agent_score = sum(1 for pattern in AGENT_PATTERNS if re.search(pattern, lowered))
+    customer_score = sum(1 for pattern in CUSTOMER_PATTERNS if re.search(pattern, lowered))
+
+    if AGENT_LABEL_RE.match(cleaned):
+        agent_score += 3
+    if CUSTOMER_LABEL_RE.match(cleaned):
+        customer_score += 3
+
+    if '?' in cleaned:
+        customer_score += 1
+
+    word_count = len(re.findall(r'\w+', cleaned))
+    if 1 <= word_count <= 8 and agent_score == 0:
+        customer_score += 1
+
+    return agent_score, customer_score
+
+
+def _clean_speaker_tag(segment: str) -> str:
+    return re.sub(
+        r'^\s*(?:customer|cust|c|caller|client|agent|a|rep|advisor|operator|consultant)[:\-\]\)]\s*',
+        '',
+        segment,
+        flags=re.IGNORECASE
+    ).strip()
+
+
+def _split_transcript_units(transcript: str) -> List[str]:
+    lines = [line.strip() for line in transcript.splitlines() if line.strip()]
+    if len(lines) > 1:
+        return lines
+
+    sentences = [part.strip() for part in re.split(SENTENCE_SPLIT_RE, transcript) if part.strip()]
+    return sentences if sentences else lines
+
+
+def _identify_segments(transcript: str, target: str) -> str:
+    if not transcript:
+        return ""
+
+    labeled = (
+        extract_customer_from_labeled_transcript(transcript)
+        if target == "customer"
+        else extract_agent_from_labeled_transcript(transcript)
+    )
+    if labeled:
+        return labeled
+
+    units = _split_transcript_units(transcript)
+    target_segments = []
+    non_opposite_segments = []
+
+    for unit in units:
+        cleaned = _clean_speaker_tag(unit)
+        if not cleaned:
+            continue
+
+        agent_score, customer_score = _score_segment(cleaned)
+
+        if target == "customer":
+            if customer_score > agent_score or (customer_score > 0 and agent_score == 0):
+                target_segments.append(cleaned)
+            if agent_score == 0:
+                non_opposite_segments.append(cleaned)
+        else:
+            if agent_score > customer_score or (agent_score > 0 and customer_score == 0):
+                target_segments.append(cleaned)
+            if customer_score == 0:
+                non_opposite_segments.append(cleaned)
+
+    if target_segments:
+        return " ".join(target_segments).strip()
+
+    if non_opposite_segments:
+        return " ".join(non_opposite_segments).strip()
+
+    cleaned_transcript = transcript.strip()
+    return cleaned_transcript if len(cleaned_transcript) > 50 else ""
+
+
 def identify_customer_segments(transcript: str) -> str:
     """
     Improved extraction:
     - Prefer explicit speaker labels (Customer:, C:, [C], etc.)
-    - Fall back to heuristic line scoring with expanded patterns
+    - Fall back to heuristic sentence/line classification
     - Use simple cleaning to strip speaker tags
-    - FINAL FALLBACK: if nothing found, use all non-agent lines
+    - FINAL FALLBACK: if nothing found, use the best available approximation
     """
-    if not transcript:
-        return ""
+    return _identify_segments(transcript, "customer")
 
-    # 1) try labeled extraction (high precision)
-    labeled = extract_customer_from_labeled_transcript(transcript)
-    if labeled:
-        return labeled
 
-    # 2) fallback heuristic: score each line
-    lines = transcript.splitlines()
-    customer_segments = []
-    non_agent_lines = []  # Track all lines that aren't clearly agent
-    
-    for line in lines:
-        if not line.strip():
-            continue
-        l = line.strip()
-        low = l.lower()
+def identify_agent_segments(transcript: str) -> str:
+    """Extract agent-like segments from a transcript using labels and heuristics."""
+    return _identify_segments(transcript, "agent")
 
-        # quick skip if it's an agent-labeled line
-        if AGENT_LABEL_RE.match(l):
-            continue
 
-        agent_score = sum(1 for p in AGENT_PATTERNS if re.search(p, low))
-        customer_score = sum(1 for p in CUSTOMER_PATTERNS if re.search(p, low))
-
-        # boost if explicit "Customer:" occurs in the line
-        if re.search(r'\b(customer|cust|c)[:\-\]]', l, re. IGNORECASE):
-            customer_score += 2
-
-        # heuristic: short lines 1-6 words that don't contain agent keywords are often customer short replies
-        word_count = len(re.findall(r'\w+', l))
-        if 1 <= word_count <= 8 and agent_score == 0:
-            customer_score += 1
-
-        # if punctuation like "?" often customer asking question
-        if '?' in l:
-            customer_score += 1
-
-        # strip common speaker tags at start
-        cleaned = re.sub(r'^\s*(?:customer|cust|c|agent|a|rep|advisor)[:\-\]\)]\s*', '', l, flags=re.IGNORECASE)
-        
-        # Track non-agent lines for final fallback
-        if agent_score == 0:
-            non_agent_lines.append(cleaned)
-
-        if customer_score > agent_score or (customer_score > 0 and agent_score == 0):
-            customer_segments.append(cleaned)
-
-    # If we found customer segments, return them
-    if customer_segments:
-        return " ".join(customer_segments).strip()
-    
-    # 3) FINAL FALLBACK: If no customer segments found but we have non-agent lines,
-    # use those (better than returning nothing)
-    if non_agent_lines:
-        return " ".join(non_agent_lines).strip()
-    
-    # 4) LAST RESORT: If transcript has content but no structure detected,
-    # return the whole transcript for sentiment analysis (something is better than nothing)
-    cleaned_transcript = transcript.strip()
-    if len(cleaned_transcript) > 50:  # Only if there's meaningful content
-        return cleaned_transcript
-    
-    return ""
+def _get_transformer_pipeline():
+    global _TRANSFORMER_PIPE
+    if not _TRANSFORMER_AVAILABLE or pipeline is None:
+        return None
+    if _TRANSFORMER_PIPE is None:
+        try:
+            _TRANSFORMER_PIPE = pipeline(
+                "sentiment-analysis",
+                model="distilbert-base-uncased-finetuned-sst-2-english"
+            )
+        except Exception:
+            return None
+    return _TRANSFORMER_PIPE
 
 def _vader_sentence_score(sentence: str) -> Tuple[str, float]:
     """
@@ -321,10 +384,11 @@ def _transformer_score_batch(sentences: List[str]) -> List[Tuple[str, float]]:
     Returns list of (label, confidence) where label in {'POSITIVE','NEGATIVE'} mapped to our labels.
     If transformer not available, return empty list.
     """
-    if not _TRANSFORMER_AVAILABLE or _TRANSFORMER_PIPE is None or len(sentences) == 0:
+    transformer_pipe = _get_transformer_pipeline()
+    if transformer_pipe is None or len(sentences) == 0:
         return []
     try:
-        results = _TRANSFORMER_PIPE(sentences, truncation=True)
+        results = transformer_pipe(sentences, truncation=True)
         # results: [{'label':'POSITIVE','score':0.99}, ...]
         mapped = []
         for r in results:

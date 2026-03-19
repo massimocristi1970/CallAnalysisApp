@@ -1,104 +1,140 @@
 """
-Automated Database Upload to HuggingFace Spaces
-Safe to commit - uses .env file for token
+Automated Database Upload to Hugging Face Spaces.
+Safe to commit - uses .env file or environment variables for the token.
 """
 
-from huggingface_hub import HfApi
+from __future__ import annotations
+
+import argparse
 import os
+import sys
 from datetime import datetime
+from pathlib import Path
+from typing import Iterable
 
-# ========== LOAD TOKEN FROM .ENV FILE ==========
-# Try to load from .env file first
-script_dir = os.path.dirname(os.path.abspath(__file__))
-env_path = os.path.join(script_dir, ".env")
+from huggingface_hub import HfApi
 
-HF_TOKEN = None
-
-# Read token from .env file
-if os.path.exists(env_path):
-    with open(env_path, 'r') as f:
-        for line in f:
-            line = line.strip()
-            if line.startswith('HF_TOKEN='):
-                HF_TOKEN = line.split('=', 1)[1].strip().strip('"').strip("'")
-                break
-
-# Fall back to environment variable if not in .env
-if not HF_TOKEN:
-    HF_TOKEN = os.environ.get('HF_TOKEN')
-
-if not HF_TOKEN:
-    print("=" * 60)
-    print("ERROR: HF_TOKEN not found!")
-    print("=" * 60)
-    print("\nAdd this line to your .env file:")
-    print("HF_TOKEN=hf_your_token_here")
-    print(f"\n.env file location: {env_path}")
-    input("\nPress Enter to exit...")
-    exit(1)
-
-# Show token is loaded (masked)
-print(f"Token loaded: {HF_TOKEN[:10]}...{HF_TOKEN[-4:]}")
-
-# ========== CONFIGURATION ==========
+SCRIPT_DIR = Path(__file__).resolve().parent
+ENV_PATH = SCRIPT_DIR / ".env"
+DB_PATH = SCRIPT_DIR / "call_analysis.db"
 USERNAME = "massimocristi1970"
-DB_PATH = os.path.join(script_dir, "call_analysis.db")
-
 SPACES = [
     "call-analysis-app",
-    "call-analysis-dashboard"
+    "call-analysis-dashboard",
 ]
 
-# ====================================
 
-def upload_database():
-    """Upload database to all HuggingFace Spaces"""
+def load_hf_token() -> str | None:
+    token = None
 
-    if not os.path.exists(DB_PATH):
-        print(f"ERROR: Database not found at {DB_PATH}")
+    if ENV_PATH.exists():
+        for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith("HF_TOKEN="):
+                token = line.split("=", 1)[1].strip().strip('"').strip("'")
+                break
+
+    if not token:
+        token = os.environ.get("HF_TOKEN")
+
+    return token
+
+
+def mask_token(token: str) -> str:
+    if len(token) <= 14:
+        return "[masked]"
+    return f"{token[:10]}...{token[-4:]}"
+
+
+def upload_database(spaces: Iterable[str] | None = None, quiet: bool = False) -> bool:
+    """Upload the local SQLite database to the configured Hugging Face Spaces."""
+    token = load_hf_token()
+    if not token:
+        if not quiet:
+            print("=" * 60)
+            print("ERROR: HF_TOKEN not found!")
+            print("=" * 60)
+            print("\nAdd this line to your .env file:")
+            print("HF_TOKEN=hf_your_token_here")
+            print(f"\n.env file location: {ENV_PATH}")
         return False
 
-    file_size_mb = os.path.getsize(DB_PATH) / (1024 * 1024)
-    print(f"Database size: {file_size_mb:.2f} MB")
-    print(f"Source: {DB_PATH}")
-    print(f"Upload time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 60)
+    if not DB_PATH.exists():
+        if not quiet:
+            print(f"ERROR: Database not found at {DB_PATH}")
+        return False
+
+    selected_spaces = list(spaces or SPACES)
+    file_size_mb = DB_PATH.stat().st_size / (1024 * 1024)
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if not quiet:
+        print("=" * 60)
+        print("  Hugging Face Database Upload Tool")
+        print("=" * 60)
+        print(f"Token loaded: {mask_token(token)}")
+        print(f"Database size: {file_size_mb:.2f} MB")
+        print(f"Source: {DB_PATH}")
+        print(f"Upload time: {timestamp}")
+        print("=" * 60)
 
     api = HfApi()
-
     success_count = 0
-    for space_name in SPACES:
-        repo_id = f"{USERNAME}/{space_name}"  # FIXED: now uses actual space_name
+
+    for space_name in selected_spaces:
+        repo_id = f"{USERNAME}/{space_name}"
         try:
-            print(f"\nUploading to {repo_id}...")
+            if not quiet:
+                print(f"\nUploading to {repo_id}...")
 
             api.upload_file(
-                path_or_fileobj=DB_PATH,
+                path_or_fileobj=str(DB_PATH),
                 path_in_repo="call_analysis.db",
-                repo_id=repo_id,  # FIXED: uses variable, not hardcoded
+                repo_id=repo_id,
                 repo_type="space",
-                token=HF_TOKEN,
-                commit_message=f"Update database - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                token=token,
+                commit_message=f"Update database - {timestamp}",
             )
 
-            print(f"SUCCESS: {space_name} updated!")
             success_count += 1
+            if not quiet:
+                print(f"SUCCESS: {space_name} updated!")
+        except Exception as exc:
+            if not quiet:
+                print(f"ERROR uploading to {space_name}: {exc}")
+            else:
+                print(f"[upload_to_hf] ERROR uploading to {space_name}: {exc}", file=sys.stderr)
 
-        except Exception as e:
-            print(f"ERROR uploading to {space_name}: {e}")
+    if not quiet:
+        print("\n" + "=" * 60)
+        print(f"Upload complete! {success_count}/{len(selected_spaces)} spaces updated")
+        if success_count > 0:
+            print("Spaces will restart automatically (30-60 seconds)")
 
-    print("\n" + "=" * 60)
-    print(f"Upload complete! {success_count}/{len(SPACES)} spaces updated")
-    if success_count > 0:
-        print("Spaces will restart automatically (30-60 seconds)")
+    return success_count == len(selected_spaces)
 
-    return success_count == len(SPACES)
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Upload call_analysis.db to Hugging Face Spaces.")
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Reduce output and avoid interactive prompts; useful for git hooks.",
+    )
+    parser.add_argument(
+        "--space",
+        dest="spaces",
+        action="append",
+        help="Upload only to the named Hugging Face Space. Can be passed multiple times.",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    success = upload_database(spaces=args.spaces, quiet=args.quiet)
+    return 0 if success else 1
 
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("  HuggingFace Database Upload Tool")
-    print("=" * 60)
-
-    upload_database()
-    input("\nPress Enter to exit...")
+    raise SystemExit(main())

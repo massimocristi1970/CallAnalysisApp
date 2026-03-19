@@ -159,6 +159,37 @@ git push space master:main
 5. Click **"Generate"**
 6. Copy the token and use it as your password
 
+### Option A1: Automatic Sync From GitHub
+
+If this repository is hosted on GitHub, you can make Hugging Face update automatically whenever you push to `main`.
+
+**What this does:**
+- GitHub remains your main source of truth
+- Every push to `main` automatically mirrors the repo to Hugging Face
+- Hugging Face rebuilds the Space after the sync
+- No more manual file uploads for code changes
+
+**Setup steps:**
+1. In GitHub, open this repository
+2. Go to **Settings** -> **Secrets and variables** -> **Actions**
+3. Create a new repository secret named `HF_TOKEN`
+4. Use a Hugging Face token with **write** access
+5. Push to `main` and GitHub Actions will sync the repo to Hugging Face automatically
+
+**Workflow file:**
+- [deploy-huggingface.yml](/C:/Dev/GitHub/CallAnalysisApp/.github/workflows/deploy-huggingface.yml)
+
+**Important note:**
+- This automates code deployment after a `git push` to GitHub, not just a local commit
+- If you want deployment on local commit without pushing, that would need a local git hook instead
+
+**Database sync automation:**
+- The database file is ignored by git, so GitHub Actions cannot upload it for you
+- To automate database sync from your machine, install the local hook with `python install_git_hooks.py`
+- Or run [install_git_hooks.bat](/C:/Dev/GitHub/CallAnalysisApp/install_git_hooks.bat) on Windows
+- After that, every successful `git push origin main` will also run [upload_to_hf.py](/C:/Dev/GitHub/CallAnalysisApp/upload_to_hf.py) locally and upload `call_analysis.db`
+- The hook uses your local `.env` or `HF_TOKEN` environment variable
+
 ### Option B: Using Web Interface
 
 #### Step 1: Prepare Files
