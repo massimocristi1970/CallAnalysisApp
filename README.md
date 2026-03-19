@@ -1,3 +1,15 @@
+---
+title: Call Analysis App
+emoji: 🎧
+colorFrom: blue
+colorTo: green
+sdk: docker
+sdk_version: "1.0.0"
+app_file: app.py
+app_port: 8501
+pinned: false
+---
+
 # 🎧 Enhanced Call Analysis App with Performance Dashboard
 
 A comprehensive Streamlit-based application for transcribing, analyzing, and scoring call recordings with advanced NLP capabilities, persistent data storage, and comprehensive performance tracking. Designed to support internal QA processes and compliance with FCA expectations.
