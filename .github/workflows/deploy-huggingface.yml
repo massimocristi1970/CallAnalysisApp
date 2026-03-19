@@ -36,6 +36,14 @@ jobs:
             exit 1
           fi
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Hugging Face Hub
+        run: python -m pip install --upgrade huggingface_hub
+
       - name: Build snapshot for Hugging Face
         run: |
           rm -rf hf-deploy
@@ -44,17 +52,9 @@ jobs:
           rm -f hf-deploy/call_analysis.db
           rm -f hf-deploy/CallAnalysisApp.zip
 
-      - name: Push snapshot to Hugging Face Space
+      - name: Upload snapshot to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           REPO_ID: ${{ matrix.repo_id }}
         run: |
-          cd hf-deploy
-          git init
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "Deploy snapshot from GitHub Actions"
-          git branch -M main
-          git remote add huggingface "https://oauth2:${HF_TOKEN}@huggingface.co/spaces/${REPO_ID}"
-          git push --force huggingface main
+          python -c "from huggingface_hub import HfApi; import os; HfApi(token=os.environ['HF_TOKEN']).upload_folder(repo_id=os.environ['REPO_ID'], repo_type='space', folder_path='hf-deploy', path_in_repo='.', commit_message='Deploy snapshot from GitHub Actions', ignore_patterns=['call_analysis.db','CallAnalysisApp.zip'], delete_patterns=['call_analysis.db','CallAnalysisApp.zip'])"
