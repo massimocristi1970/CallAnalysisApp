@@ -50,6 +50,7 @@ COPY dashboard.py .
 COPY analyser.py .
 COPY transcriber.py .
 COPY database.py .
+COPY database_postgres.py .
 COPY pdf_exporter.py .
 COPY customer_sentiment.py .
 COPY customer_sentiment_api.py .

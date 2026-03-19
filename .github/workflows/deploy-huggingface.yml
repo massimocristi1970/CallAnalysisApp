@@ -12,16 +12,8 @@ concurrency:
 
 jobs:
   deploy:
-    name: Sync ${{ matrix.space_name }}
+    name: Sync call-analysis-app
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - repo_id: massimocristi1970/call-analysis-app
-            space_name: call-analysis-app
-          - repo_id: massimocristi1970/call-analysis-dashboard
-            space_name: call-analysis-dashboard
 
     steps:
       - name: Check out repository
@@ -55,6 +47,6 @@ jobs:
       - name: Upload snapshot to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          REPO_ID: ${{ matrix.repo_id }}
+          REPO_ID: massimocristi1970/call-analysis-app
         run: |
           python -c "from huggingface_hub import HfApi; import os; HfApi(token=os.environ['HF_TOKEN']).upload_folder(repo_id=os.environ['REPO_ID'], repo_type='space', folder_path='hf-deploy', path_in_repo='.', commit_message='Deploy snapshot from GitHub Actions', ignore_patterns=['call_analysis.db','CallAnalysisApp.zip'], delete_patterns=['call_analysis.db','CallAnalysisApp.zip'])"
