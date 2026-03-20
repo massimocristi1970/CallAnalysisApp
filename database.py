@@ -15,10 +15,22 @@ class CallAnalysisDB:
     def __new__(cls, db_path: str = "call_analysis.db"):
         backend = os.getenv("DATABASE_BACKEND", "sqlite").strip().lower()
         if backend in {"postgres", "postgresql", "supabase"}:
-            database_url = os.getenv("SUPABASE_DB_URL") or os.getenv("DATABASE_URL")
-            source = "SUPABASE_DB_URL" if os.getenv("SUPABASE_DB_URL") else "DATABASE_URL"
+            pg_host = os.getenv("PGHOST")
+            pg_port = os.getenv("PGPORT", "5432")
+            pg_database = os.getenv("PGDATABASE", "postgres")
+            pg_user = os.getenv("PGUSER")
+            pg_password = os.getenv("PGPASSWORD")
+
+            if pg_host and pg_user and pg_password:
+                database_url = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
+                source = "PG* env vars"
+            else:
+                database_url = os.getenv("SUPABASE_DB_URL") or os.getenv("DATABASE_URL")
+                source = "SUPABASE_DB_URL" if os.getenv("SUPABASE_DB_URL") else "DATABASE_URL"
+
             if not database_url:
-                raise ValueError("SUPABASE_DB_URL or DATABASE_URL must be set when DATABASE_BACKEND=postgres")
+                raise ValueError("Set either PGHOST/PGUSER/PGPASSWORD or SUPABASE_DB_URL/DATABASE_URL when DATABASE_BACKEND=postgres")
+
             parsed = urlparse(database_url)
             print(
                 "[DB DEBUG] backend=postgres "
