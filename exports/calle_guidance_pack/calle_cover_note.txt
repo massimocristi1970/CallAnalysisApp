@@ -1,0 +1,24 @@
+Subject: Call language and customer-signal guidance for Calle AI
+
+Hi,
+
+Attached is a guidance pack extracted from our CallAnalysisApp so your team can use the same kinds of signals and language patterns that we currently score for internally.
+
+What is included:
+- Positive or desired agent language patterns
+- Call-type-to-category mappings
+- Vulnerability-related terms and grouped risk signals
+- Unhappy customer indicators, including complaint, escalation, urgency, and confusion signals
+- High-level recommended response principles inferred from our current scoring logic
+
+Files included:
+- calle_guidance_pack.md: Human-readable summary
+- calle_guidance_pack.json: Structured machine-readable pack
+- calle_guidance_pack.csv: Flat import-friendly export
+
+Important note:
+This pack reflects the language and signal patterns we currently use for scoring and guidance inside the app. It is intended as operational guidance input rather than a strict policy or compliance rulebook.
+
+If helpful, we can also provide a second pass later with narrower "must-detect" signals only.
+
+Best,
