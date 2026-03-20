@@ -45,50 +45,6 @@ python -c "import streamlit" 2>/dev/null || {
     exit 1
 }
 
-# Log database environment summary for Hugging Face debugging
-log_info "Database backend: ${DATABASE_BACKEND:-sqlite}"
-python - <<'PY'
-import os
-from urllib.parse import urlparse
-
-def show(name, value):
-    print(f"[INFO] {name}={'set' if value else 'missing'}")
-
-show('CA_DB_HOST', os.getenv('CA_DB_HOST'))
-show('CA_DB_PORT', os.getenv('CA_DB_PORT'))
-show('CA_DB_NAME', os.getenv('CA_DB_NAME'))
-show('CA_DB_USER', os.getenv('CA_DB_USER'))
-show('CA_DB_PASSWORD', os.getenv('CA_DB_PASSWORD'))
-show('PGHOST', os.getenv('PGHOST'))
-show('PGPORT', os.getenv('PGPORT'))
-show('PGDATABASE', os.getenv('PGDATABASE'))
-show('PGUSER', os.getenv('PGUSER'))
-show('PGPASSWORD', os.getenv('PGPASSWORD'))
-show('SUPABASE_DB_URL', os.getenv('SUPABASE_DB_URL'))
-show('DATABASE_URL', os.getenv('DATABASE_URL'))
-
-source = None
-url = None
-if os.getenv('CA_DB_HOST') and os.getenv('CA_DB_USER') and os.getenv('CA_DB_PASSWORD'):
-    source = 'CA_DB_* env vars'
-    url = f"postgresql://{os.getenv('CA_DB_USER')}:{os.getenv('CA_DB_PASSWORD')}@{os.getenv('CA_DB_HOST')}:{os.getenv('CA_DB_PORT', '5432')}/{os.getenv('CA_DB_NAME', 'postgres')}"
-elif os.getenv('PGHOST') and os.getenv('PGUSER') and os.getenv('PGPASSWORD'):
-    source = 'PG* env vars'
-    url = f"postgresql://{os.getenv('PGUSER')}:{os.getenv('PGPASSWORD')}@{os.getenv('PGHOST')}:{os.getenv('PGPORT', '5432')}/{os.getenv('PGDATABASE', 'postgres')}"
-elif os.getenv('SUPABASE_DB_URL'):
-    source = 'SUPABASE_DB_URL'
-    url = os.getenv('SUPABASE_DB_URL')
-elif os.getenv('DATABASE_URL'):
-    source = 'DATABASE_URL'
-    url = os.getenv('DATABASE_URL')
-
-if url:
-    parsed = urlparse(url)
-    print(f"[INFO] DB source={source} host={parsed.hostname or 'missing'} port={parsed.port or 'missing'} user={parsed.username or 'missing'} db={parsed.path.lstrip('/') or 'missing'}")
-else:
-    print('[INFO] DB source=none')
-PY
-
 # Download spaCy model if not already present
 log_info "Checking spaCy model..."
 python -c "import spacy; spacy.load('en_core_web_sm')" 2>/dev/null || {

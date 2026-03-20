@@ -6,7 +6,6 @@ from typing import Dict, List, Any, Optional
 import json
 import os
 from pathlib import Path
-from urllib.parse import urlparse
 from database_postgres import PostgresCallAnalysisDB
 
 class CallAnalysisDB:
@@ -34,16 +33,6 @@ class CallAnalysisDB:
             if not database_url:
                 raise ValueError("Set either PGHOST/PGUSER/PGPASSWORD or SUPABASE_DB_URL/DATABASE_URL when DATABASE_BACKEND=postgres")
 
-            parsed = urlparse(database_url)
-            print(
-                "[DB DEBUG] backend=postgres "
-                f"source={source} "
-                f"scheme={parsed.scheme or 'unknown'} "
-                f"host={parsed.hostname or 'missing'} "
-                f"port={parsed.port or 'missing'} "
-                f"user={parsed.username or 'missing'} "
-                f"db={parsed.path.lstrip('/') or 'missing'}"
-            )
             schema = os.getenv("DB_SCHEMA", "call_analysis")
             return PostgresCallAnalysisDB(database_url=database_url, schema=schema)
         return super().__new__(cls)
