@@ -96,15 +96,28 @@ python -c "import spacy; spacy.load('en_core_web_sm')" 2>/dev/null || {
     python -m spacy download en_core_web_sm
 }
 
+# Streamlit security/origin flags need to match the real browser origin.
+# On Hugging Face Spaces the public hostname is managed by the platform proxy,
+# so using 0.0.0.0 as the browser address can cause upload requests to fail
+# XSRF/origin checks with HTTP 403 before the app receives the file.
+STREAMLIT_SECURITY_FLAGS="--server.enableCORS=false --server.enableXsrfProtection=true"
+STREAMLIT_BROWSER_FLAGS=""
+
+if [ -n "${SPACE_ID:-}" ] || [ -n "${SPACE_AUTHOR_NAME:-}" ]; then
+    log_info "Hugging Face Spaces environment detected; relaxing XSRF checks for proxied uploads."
+    STREAMLIT_SECURITY_FLAGS="--server.enableCORS=false --server.enableXsrfProtection=false"
+else
+    STREAMLIT_BROWSER_FLAGS="--browser.serverAddress=localhost"
+fi
+
 # Start the main app on port 8501 in the background
 log_info "Starting main Call Analysis app on port 8501..."
 streamlit run app.py \
     --server.port=8501 \
     --server.address=0.0.0.0 \
     --server.headless=true \
-    --browser.serverAddress=0.0.0.0 \
-    --server.enableCORS=false \
-    --server.enableXsrfProtection=true \
+    $STREAMLIT_BROWSER_FLAGS \
+    $STREAMLIT_SECURITY_FLAGS \
     > /tmp/app_8501.log 2>&1 &
 
 APP_PID=$!
@@ -126,9 +139,8 @@ streamlit run dashboard.py \
     --server.port=8503 \
     --server.address=0.0.0.0 \
     --server.headless=true \
-    --browser.serverAddress=0.0.0.0 \
-    --server.enableCORS=false \
-    --server.enableXsrfProtection=true \
+    $STREAMLIT_BROWSER_FLAGS \
+    $STREAMLIT_SECURITY_FLAGS \
     > /tmp/dashboard_8503.log 2>&1 &
 
 DASHBOARD_PID=$!
