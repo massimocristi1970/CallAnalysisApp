@@ -15,13 +15,16 @@ class CallAnalysisDB:
     def __new__(cls, db_path: str = "call_analysis.db"):
         backend = os.getenv("DATABASE_BACKEND", "sqlite").strip().lower()
         if backend in {"postgres", "postgresql", "supabase"}:
-            pg_host = os.getenv("PGHOST")
-            pg_port = os.getenv("PGPORT", "5432")
-            pg_database = os.getenv("PGDATABASE", "postgres")
-            pg_user = os.getenv("PGUSER")
-            pg_password = os.getenv("PGPASSWORD")
+            pg_host = os.getenv("CA_DB_HOST") or os.getenv("PGHOST")
+            pg_port = os.getenv("CA_DB_PORT") or os.getenv("PGPORT", "5432")
+            pg_database = os.getenv("CA_DB_NAME") or os.getenv("PGDATABASE", "postgres")
+            pg_user = os.getenv("CA_DB_USER") or os.getenv("PGUSER")
+            pg_password = os.getenv("CA_DB_PASSWORD") or os.getenv("PGPASSWORD")
 
-            if pg_host and pg_user and pg_password:
+            if os.getenv("CA_DB_HOST") and os.getenv("CA_DB_USER") and os.getenv("CA_DB_PASSWORD"):
+                database_url = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
+                source = "CA_DB_* env vars"
+            elif pg_host and pg_user and pg_password and os.getenv("DATABASE_BACKEND", "").strip().lower() in {"postgres", "postgresql", "supabase"}:
                 database_url = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_database}"
                 source = "PG* env vars"
             else:
