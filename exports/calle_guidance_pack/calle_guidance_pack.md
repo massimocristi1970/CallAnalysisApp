@@ -2,16 +2,40 @@
 
 This pack summarises the language, terms, and signal types currently used in CallAnalysisApp for positive scoring, vulnerability detection, and unhappy-customer detection.
 
-Generated: 2026-03-20T18:38:03.933411+00:00
+Generated: 2026-03-23T11:26:44.828071+00:00
+Pack version: 2.0
 
-## 1. Call-Type Category Mapping
+## 1. Purpose and Boundaries
+
+- Intended audience: project manager, AI vendor implementation team, conversation designers, and QA or risk reviewers.
+- Integration model: offline handoff pack only. This export gives the vendor the signal definitions and guidance at a point in time, but not live access to the app.
+- Use this pack as operational guidance input rather than as a compliance policy or rigid script library.
+- Where vulnerability, safeguarding, or severe distress is detected, supportive handling should take precedence over collections pressure.
+
+## 2. Implementation Summary
+
+- Literal phrases: use as example wording or direct match seeds, not as the only accepted wording.
+- Regex patterns: keep as pattern-based rules rather than flattening them into exact strings.
+- Priority field: only vulnerability keywords carry direct source priority; other rows should be prioritised by severity and local policy.
+- Low-confidence or unmatched calls should be logged and reviewed rather than answered too confidently.
+
+## 3. Delivery Checklist
+
+- Load the JSON pack first and preserve the provided category and signal-group labels.
+- Keep regex-pattern rows as pattern rules and literal rows as examples or seed phrases.
+- Apply stronger escalation and lower-pressure handling when vulnerability or acute distress is detected.
+- Separate advisory guidance from hard routing or suppression rules in the vendor platform.
+- Test against sample call snippets before enabling the rules on live traffic.
+- Log low-confidence, unmatched, and false-positive interactions for the next pack refresh.
+
+## 4. Call-Type Category Mapping
 
 - **Customer Service**: Customer Understanding, Fair Treatment, Resolution & Support
 - **Collections**: Customer Understanding, Fair Treatment, Vulnerability Handling, Financial Difficulty, Resolution & Support
 - **Sales**: Customer Understanding, Fair Treatment, Resolution & Support
 - **Support**: Customer Understanding, Fair Treatment, Resolution & Support
 
-## 2. Positive / Desired Agent Language
+## 5. Positive / Desired Agent Language
 
 ### Customer Understanding
 
@@ -38,17 +62,7 @@ Generated: 2026-03-20T18:38:03.933411+00:00
   - i'm confused
   - I don't understand
   - I have memory problems
-  - learning difficulties
-  - someone helps me
-  - I'm not sure what you mean
-  - this is all very confusing
-  - I need someone to help me understand
-  - so you're happy with that payment
-  - okay so this is your final payment
-  - are you happy we've got your payment
-  - are you happy with that
-  - i'll send you the payment schedule via email
-  - ... plus 117 more phrases in the JSON/CSV export
+  - ... plus 127 more phrases in the JSON/CSV export
 
 ### Fair Treatment
 
@@ -75,17 +89,7 @@ Generated: 2026-03-20T18:38:03.933411+00:00
   - how much longer do you think
   - how many days you were off work
   - is there any reason for your payments not coming out
-  - i do need to just make you aware
-  - that default now goes on hold
-  - as long as you stick to the payment schedule
-  - that default will not be registered
-  - find out a bit more what's happening on your side
-  - it would be something you would be able to afford
-  - i'm going to take that late fee off
-  - i don't want to put you into a payment plan where you're at detriment
-  - where you don't have enough to buy food
-  - if you're confident and happy that you can afford
-  - ... plus 87 more phrases in the JSON/CSV export
+  - ... plus 97 more phrases in the JSON/CSV export
 
 ### Vulnerability Handling
 
@@ -112,17 +116,7 @@ Generated: 2026-03-20T18:38:03.933411+00:00
   - Any future payments that would have been set up are now cancelled
   - my deepest condolences
   - I do understand that you did say
-  - had ADHD
-  - Because you were going through some difficulty
-  - I don't want you to enter into something that isn't sustainable
-  - No, you're not under any pressure whatsoever
-  - Okay, let's see where we're up to
-  - That's okay. Don't worry
-  - That will work and it's safe to do
-  - We'll accommodate whichever works best for you
-  - so, you've got some breathing room
-  - I know what it's like
-  - ... plus 23 more phrases in the JSON/CSV export
+  - ... plus 33 more phrases in the JSON/CSV export
 
 ### Financial Difficulty
 
@@ -149,17 +143,7 @@ Generated: 2026-03-20T18:38:03.933411+00:00
   - how much they've increased by
   - do you contribute towards food
   - is there any reason why you can't make this month's payment
-  - do you mind me asking what those financial difficulties are
-  - how much extra are you paying
-  - not able to make any payment not even a small payment
-  - having a look at your financials
-  - the change in your circumstances
-  - your credit commitment is that still
-  - your food and basic essentials
-  - do you have any other credit commitments
-  - do you have any other active loans
-  - are you able to make a small payment
-  - ... plus 102 more phrases in the JSON/CSV export
+  - ... plus 112 more phrases in the JSON/CSV export
 
 ### Resolution & Support
 
@@ -186,31 +170,23 @@ Generated: 2026-03-20T18:38:03.933411+00:00
   - just reset that up for you
   - let's have a look and see what we can do
   - if i reset your payment schedule
-  - i set that payment schedule up
-  - you're more than welcome to send an email
-  - what i can do for you is
-  - are you happy with monthly payment or weekly payments
-  - so you looking at us restarting your payment schedule
-  - we are giving you the grace period
-  - let's look at setting a new payment arrangement
-  - i will remove the late charge
-  - so if we do it over multiple payments
-  - let me just put that in place for you
-  - ... plus 105 more phrases in the JSON/CSV export
+  - ... plus 115 more phrases in the JSON/CSV export
 
-## 3. Vulnerability Signals
+## 6. Vulnerability Signals
 
 ### acute_distress_or_safeguarding
 
 - Why it matters: Potential immediate welfare, safeguarding, or severe distress risk.
 - Recommended response style: Prioritise safety, de-escalate, avoid pressure, and follow safeguarding or escalation procedures immediately.
-- Example terms: suicide, harassment, scam, police, sectioned, domestic violence, psychosis, abused, abusive, coercion, manipulated, mental breakdown, restraining order, refuge, feel like giving up, breaking point
+- Example terms: suicide, harassment, scam, police, sectioned, domestic violence, psychosis, abused, abusive, coercion, manipulated, mental breakdown, restraining order, refuge, feel like giving up
+- Additional terms available in export: 1
 
 ### mental_health_or_cognitive
 
 - Why it matters: Customer may have reduced resilience, reduced understanding, or need a slower and more supportive approach.
 - Recommended response style: Use simple language, repeat key information, check understanding, and ask whether any support or reasonable adjustments would help.
-- Example terms: vulnerable, lacks understanding, mental health, depression, anxiety, stress, bipolar, PTSD, ADHD, autism, therapist, disorientated, medication, overwhelmed, mental health crisis, stressed
+- Example terms: vulnerable, lacks understanding, mental health, depression, anxiety, stress, bipolar, PTSD, ADHD, autism, therapist, disorientated, medication, overwhelmed, mental health crisis
+- Additional terms available in export: 1
 
 ### health_bereavement_or_life_event
 
@@ -222,8 +198,8 @@ Generated: 2026-03-20T18:38:03.933411+00:00
 
 - Why it matters: Customer may be unable to maintain payments without harming essential living costs or priority commitments.
 - Recommended response style: Explore affordability first, discuss priority bills, consider smaller payments or holds, and avoid unaffordable commitments.
-- Example terms: can't afford, no money left, skip meals, heating or eating, financial difficulties, job loss, foodbank, overdrawn, no money, no income, rent arrears, overcommitted, financial difficulty, financial trouble, between jobs, priority bills, priority debts, zero disposable income, negative budget, energy arrears
-- Additional terms available in export: 7
+- Example terms: can't afford, no money left, skip meals, heating or eating, financial difficulties, job loss, foodbank, overdrawn, no money, no income, rent arrears, overcommitted, financial difficulty, financial trouble, between jobs
+- Additional terms available in export: 12
 
 ### housing_or_stability_risk
 
@@ -235,10 +211,10 @@ Generated: 2026-03-20T18:38:03.933411+00:00
 
 - Why it matters: Additional terms already treated as risk or support indicators by the app.
 - Recommended response style: Treat as a cue to assess whether a more supportive or lower-pressure response is needed.
-- Example terms: complaint, threaten, i've had enough, multiple payment option offering, plan implementation, spare money utilization, online payment facilitation, default notice, court action, bailiff, debt collector, enforcement, legal action, bankruptcy, choosing between, struggling, unable to pay, late payment, refund, collection
-- Additional terms available in export: 99
+- Example terms: complaint, threaten, i've had enough, multiple payment option offering, plan implementation, spare money utilization, online payment facilitation, default notice, court action, bailiff, debt collector, enforcement, legal action, bankruptcy, choosing between
+- Additional terms available in export: 104
 
-## 4. Unhappy Customer Signals
+## 7. Unhappy Customer Signals
 
 ### frustration_and_complaints
 
@@ -260,12 +236,7 @@ Generated: 2026-03-20T18:38:03.933411+00:00
   - i'm not satisfied
   - i have a complaint
   - i want to complain
-  - i wish to complain
-  - i am disappointed
-  - i'm disappointed
-  - i'm really disappointed
-  - you're not helping
-  - ... plus 56 more phrases in the JSON/CSV export
+  - ... plus 61 more phrases in the JSON/CSV export
 
 ### escalation_requests
 
@@ -287,12 +258,7 @@ Generated: 2026-03-20T18:38:03.933411+00:00
   - your manager
   - complaints department
   - i want to take this further
-  - i'll be taking this further
-  - i'll go to the ombudsman
-  - trading standards
-  - i'll contact
-  - i'll be contacting
-  - ... plus 2 more phrases in the JSON/CSV export
+  - ... plus 7 more phrases in the JSON/CSV export
 
 ### urgency_signals
 
@@ -351,21 +317,65 @@ Generated: 2026-03-20T18:38:03.933411+00:00
   - this is not working
   - it's not working
   - it doesn't work
-  - it won't let me
-  - i can't
-  - i couldn't
-  - i tried
-  - i've tried
-  - ... plus 24 more phrases in the JSON/CSV export
+  - ... plus 29 more phrases in the JSON/CSV export
 
-## 5. Recommended Response Principles
+## 8. Recommended Response Principles
 
 - **When vulnerability is indicated**: Slow the conversation down, check understanding, reduce pressure, and offer support or flexibility before focusing on payment or process.
 - **When the customer sounds unhappy or frustrated**: Acknowledge the emotion first, avoid sounding scripted or defensive, then explain the fix or escalation path clearly.
-- **When affordability or hardship is indicated**: Prioritise sustainable outcomes, explore income and expenditure, and avoid setting commitments that could worsen the customer’s position.
+- **When affordability or hardship is indicated**: Prioritise sustainable outcomes, explore income and expenditure, and avoid setting commitments that could worsen the customer's position.
 - **When explaining actions or next steps**: Use short plain-English explanations, confirm dates and amounts, and check whether the customer wants anything repeated or sent in writing.
 
-## 6. Source Notes
+## 9. Change Control Guidance
+
+- **Detection thresholds and escalation handling**: Owner: AI vendor implementation lead plus your operational owner. Approval needed: Yes. Why: These changes can alter how vulnerable, distressed, or unhappy customers are handled.
+- **Customer-facing wording and scripting**: Owner: Conversation design owner. Approval needed: Yes. Why: Changes may affect fairness, clarity, or pressure in live interactions.
+- **Taxonomy, labels, and routing metadata**: Owner: Vendor product or configuration team. Approval needed: Usually. Why: Lower-risk operational tuning, but still affects reporting and call flows.
+- **Analytics dashboards and internal tagging only**: Owner: Vendor analytics team. Approval needed: Usually not. Why: Safe to tune if it does not change live customer outcomes or suppression logic.
+
+## 10. Sample Test Scenarios
+
+### CALLE-001
+
+- Call type: Collections
+- Example customer utterance: I lost my job, I can barely cover rent, and I do not understand what happens next.
+- Expected detection: financial_hardship_and_basic_needs, confusion_and_problems
+- Expected agent behaviour: Slow down, check understanding, explore affordability before asking for commitment, and explain next steps in plain English.
+- Escalation expectation: Review for supportive treatment and affordability handling.
+
+### CALLE-002
+
+- Call type: Customer Service
+- Example customer utterance: I want to make a complaint and speak to a manager today.
+- Expected detection: frustration_and_complaints, escalation_requests, urgency_signals
+- Expected agent behaviour: Acknowledge the frustration, explain the complaint path clearly, and avoid sounding defensive or obstructive.
+- Escalation expectation: Follow complaints or supervisor-routing process.
+
+### CALLE-003
+
+- Call type: Collections
+- Example customer utterance: My partner passed away and I am struggling to keep on top of everything.
+- Expected detection: health_bereavement_or_life_event
+- Expected agent behaviour: Acknowledge the bereavement, reduce pressure, keep questions minimal, and offer flexible next steps.
+- Escalation expectation: Apply bereavement or vulnerability handling path where available.
+
+### CALLE-004
+
+- Call type: Collections
+- Example customer utterance: Are you sure that is right? I was told something different last week.
+- Expected detection: skepticism_and_doubt
+- Expected agent behaviour: Restate the explanation plainly, clarify the evidence or reason, and confirm what happens next.
+- Escalation expectation: No automatic escalation, but monitor for unresolved distrust.
+
+### CALLE-005
+
+- Call type: Collections
+- Example customer utterance: I feel like giving up. I cannot do this anymore.
+- Expected detection: acute_distress_or_safeguarding
+- Expected agent behaviour: Prioritise immediate safety and safeguarding steps, stop standard collections pressure, and route urgently.
+- Escalation expectation: Immediate safeguarding escalation.
+
+## 11. Source Notes
 
 - Positive language and call-type mapping come from `config.yaml`.
 - Unhappy-customer signals come from `customer_sentiment.py` pattern matching.

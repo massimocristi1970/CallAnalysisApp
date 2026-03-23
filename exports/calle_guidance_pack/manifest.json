@@ -1,0 +1,14 @@
+{
+  "generated_at": "2026-03-23T11:26:44.828071+00:00",
+  "pack_version": "2.0",
+  "source_repo": "CallAnalysisApp",
+  "package_name": "calle_guidance_pack",
+  "offline_handoff_only": true,
+  "files": [
+    "calle_cover_note.txt",
+    "calle_guidance_pack.md",
+    "calle_guidance_pack.json",
+    "calle_guidance_pack.csv",
+    "manifest.json"
+  ]
+}

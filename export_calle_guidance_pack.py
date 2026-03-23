@@ -238,6 +238,20 @@ def clean_phrase(text: str) -> str:
     return text.strip(" \"'")
 
 
+def classify_match_type(value: str) -> str:
+    regex_tokens = ["(?:", "\\b", "\\?", "\\d", "[", "]", "|", "^", "$", "+", "*"]
+    return "regex_pattern" if any(token in value for token in regex_tokens) else "literal_phrase"
+
+
+def describe_detection_type(section: str, value: str) -> str:
+    match_type = classify_match_type(value)
+    if section == "unhappy_customer_signal" and match_type == "regex_pattern":
+        return "Implement as pattern matching rather than exact text matching."
+    if match_type == "literal_phrase":
+        return "Treat as an example phrase or term; synonyms and close variants should also be considered."
+    return "Treat as a pattern-driven signal rather than an exact phrase list."
+
+
 def unique_preserve_order(items: List[str]) -> List[str]:
     seen = set()
     result = []
@@ -373,6 +387,104 @@ def group_vulnerability_terms(keywords: Dict[str, List[str]]) -> List[Dict[str, 
     return grouped
 
 
+def build_change_controls() -> List[Dict[str, str]]:
+    return [
+        {
+            "change_area": "Detection thresholds and escalation handling",
+            "owner": "AI vendor implementation lead plus your operational owner",
+            "approval_needed": "Yes",
+            "reason": "These changes can alter how vulnerable, distressed, or unhappy customers are handled.",
+        },
+        {
+            "change_area": "Customer-facing wording and scripting",
+            "owner": "Conversation design owner",
+            "approval_needed": "Yes",
+            "reason": "Changes may affect fairness, clarity, or pressure in live interactions.",
+        },
+        {
+            "change_area": "Taxonomy, labels, and routing metadata",
+            "owner": "Vendor product or configuration team",
+            "approval_needed": "Usually",
+            "reason": "Lower-risk operational tuning, but still affects reporting and call flows.",
+        },
+        {
+            "change_area": "Analytics dashboards and internal tagging only",
+            "owner": "Vendor analytics team",
+            "approval_needed": "Usually not",
+            "reason": "Safe to tune if it does not change live customer outcomes or suppression logic.",
+        },
+    ]
+
+
+def build_delivery_checklist() -> List[str]:
+    return [
+        "Load the JSON pack first and preserve the provided category and signal-group labels.",
+        "Keep regex-pattern rows as pattern rules and literal rows as examples or seed phrases.",
+        "Apply stronger escalation and lower-pressure handling when vulnerability or acute distress is detected.",
+        "Separate advisory guidance from hard routing or suppression rules in the vendor platform.",
+        "Test against sample call snippets before enabling the rules on live traffic.",
+        "Log low-confidence, unmatched, and false-positive interactions for the next pack refresh.",
+    ]
+
+
+def build_test_scenarios() -> List[Dict[str, object]]:
+    return [
+        {
+            "scenario_id": "CALLE-001",
+            "call_type": "Collections",
+            "customer_utterance": "I lost my job, I can barely cover rent, and I do not understand what happens next.",
+            "expected_detection": [
+                "financial_hardship_and_basic_needs",
+                "confusion_and_problems",
+            ],
+            "expected_agent_behaviour": "Slow down, check understanding, explore affordability before asking for commitment, and explain next steps in plain English.",
+            "should_escalate": "Review for supportive treatment and affordability handling.",
+        },
+        {
+            "scenario_id": "CALLE-002",
+            "call_type": "Customer Service",
+            "customer_utterance": "I want to make a complaint and speak to a manager today.",
+            "expected_detection": [
+                "frustration_and_complaints",
+                "escalation_requests",
+                "urgency_signals",
+            ],
+            "expected_agent_behaviour": "Acknowledge the frustration, explain the complaint path clearly, and avoid sounding defensive or obstructive.",
+            "should_escalate": "Follow complaints or supervisor-routing process.",
+        },
+        {
+            "scenario_id": "CALLE-003",
+            "call_type": "Collections",
+            "customer_utterance": "My partner passed away and I am struggling to keep on top of everything.",
+            "expected_detection": [
+                "health_bereavement_or_life_event",
+            ],
+            "expected_agent_behaviour": "Acknowledge the bereavement, reduce pressure, keep questions minimal, and offer flexible next steps.",
+            "should_escalate": "Apply bereavement or vulnerability handling path where available.",
+        },
+        {
+            "scenario_id": "CALLE-004",
+            "call_type": "Collections",
+            "customer_utterance": "Are you sure that is right? I was told something different last week.",
+            "expected_detection": [
+                "skepticism_and_doubt",
+            ],
+            "expected_agent_behaviour": "Restate the explanation plainly, clarify the evidence or reason, and confirm what happens next.",
+            "should_escalate": "No automatic escalation, but monitor for unresolved distrust.",
+        },
+        {
+            "scenario_id": "CALLE-005",
+            "call_type": "Collections",
+            "customer_utterance": "I feel like giving up. I cannot do this anymore.",
+            "expected_detection": [
+                "acute_distress_or_safeguarding",
+            ],
+            "expected_agent_behaviour": "Prioritise immediate safety and safeguarding steps, stop standard collections pressure, and route urgently.",
+            "should_escalate": "Immediate safeguarding escalation.",
+        },
+    ]
+
+
 def build_pack() -> Dict[str, object]:
     config_text = read_config_text()
     call_type_category_map = parse_yaml_section_of_lists(config_text, "call_type_category_map")
@@ -430,7 +542,7 @@ def build_pack() -> Dict[str, object]:
         },
         {
             "scenario": "When affordability or hardship is indicated",
-            "guidance": "Prioritise sustainable outcomes, explore income and expenditure, and avoid setting commitments that could worsen the customer’s position.",
+            "guidance": "Prioritise sustainable outcomes, explore income and expenditure, and avoid setting commitments that could worsen the customer's position.",
         },
         {
             "scenario": "When explaining actions or next steps",
@@ -443,6 +555,14 @@ def build_pack() -> Dict[str, object]:
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "purpose": "Shareable guidance pack for Calle AI based on the language, signals, and scoring themes already used inside CallAnalysisApp.",
             "source_files": ["config.yaml", "customer_sentiment.py", "analyser.py"],
+            "pack_version": "2.0",
+            "offline_handoff_only": True,
+            "intended_audience": [
+                "Project manager",
+                "AI vendor implementation team",
+                "Conversation design team",
+                "Operational risk or QA reviewers",
+            ],
         },
         "call_type_category_map": call_type_category_map,
         "positive_language": positive_language,
@@ -450,12 +570,26 @@ def build_pack() -> Dict[str, object]:
         "vulnerability_signals": vulnerability_signals,
         "unhappy_customer_signals": unhappy_customer_signals,
         "recommended_response_principles": recommended_principles,
+        "field_guide": {
+            "literal_phrase": "A plain phrase or term that can be matched directly or used as a seed example for synonyms.",
+            "regex_pattern": "A pattern expression copied from the current app logic and intended for pattern-based matching.",
+            "priority_field": "Only vulnerability keywords carry a direct priority from the source config; other rows should be prioritised by signal-group severity and local policy.",
+        },
+        "implementation_guardrails": [
+            "Use this pack as operational guidance input, not as a standalone policy or legal or compliance rulebook.",
+            "Do not treat every phrase as mandatory customer-facing script; many are examples of effective wording rather than exact responses.",
+            "Where distress, safeguarding, bereavement, or clear vulnerability is indicated, supportive handling should take precedence over payment collection pressure.",
+            "Low-confidence or unmatched interactions should be logged for review rather than guessed at confidently.",
+        ],
+        "change_controls": build_change_controls(),
+        "delivery_checklist": build_delivery_checklist(),
+        "test_scenarios": build_test_scenarios(),
     }
 
 
 def write_json(pack: Dict[str, object]) -> Path:
     path = OUTPUT_DIR / "calle_guidance_pack.json"
-    path.write_text(json.dumps(pack, indent=2, ensure_ascii=True), encoding="utf-8")
+    path.write_text(json.dumps(pack, indent=2, ensure_ascii=False), encoding="utf-8")
     return path
 
 
@@ -527,7 +661,7 @@ def write_csv(pack: Dict[str, object]) -> Path:
                         "priority": "",
                         "term_or_phrase": phrase,
                         "why_important": item["why_important"],
-                        "recommended_response_style": item["recommended_response_style"],
+                        "recommended_response_style": f"{item['recommended_response_style']} {describe_detection_type('unhappy_customer_signal', phrase)}",
                         "source": "customer_sentiment.py:CUSTOMER_PATTERNS",
                     }
                 )
@@ -547,6 +681,60 @@ def write_csv(pack: Dict[str, object]) -> Path:
     return path
 
 
+def write_cover_note(pack: Dict[str, object]) -> Path:
+    path = OUTPUT_DIR / "calle_cover_note.txt"
+    lines = [
+        "Subject: Calle AI language, signal, and implementation pack",
+        "",
+        "Hi,",
+        "",
+        "Attached is an offline handoff pack extracted from CallAnalysisApp so your team can configure the AI agent using the same broad language and customer-signal themes that we currently score internally.",
+        "",
+        "What is included:",
+        "- A human-readable overview of positive language, vulnerability signals, unhappy-customer signals, and response principles",
+        "- A machine-readable JSON export for implementation and mapping",
+        "- A flat CSV export for spreadsheet review or ETL",
+        "- A delivery checklist, governance notes, and sample test scenarios",
+        "",
+        "How to use it:",
+        "- Treat this as guidance input for configuration, retrieval, routing, and QA",
+        "- Preserve signal groups and categories where possible",
+        "- Log low-confidence or unmatched interactions so we can improve the next version",
+        "",
+        "Important boundaries:",
+        "- This is an offline export, not a live API integration",
+        "- The pack reflects the current app logic as at generation time and should be refreshed when major logic or language changes are agreed",
+        "- It is not a substitute for your own compliance, QA, or safeguarding controls",
+        "",
+        f"Pack version: {pack['metadata']['pack_version']}",
+        f"Generated: {pack['metadata']['generated_at_utc']}",
+        "",
+        "Best,",
+    ]
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
+
+
+def write_manifest(pack: Dict[str, object]) -> Path:
+    path = OUTPUT_DIR / "manifest.json"
+    manifest = {
+        "generated_at": pack["metadata"]["generated_at_utc"],
+        "pack_version": pack["metadata"]["pack_version"],
+        "source_repo": "CallAnalysisApp",
+        "package_name": "calle_guidance_pack",
+        "offline_handoff_only": True,
+        "files": [
+            "calle_cover_note.txt",
+            "calle_guidance_pack.md",
+            "calle_guidance_pack.json",
+            "calle_guidance_pack.csv",
+            "manifest.json",
+        ],
+    }
+    path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
 def write_markdown(pack: Dict[str, object]) -> Path:
     path = OUTPUT_DIR / "calle_guidance_pack.md"
     lines: List[str] = []
@@ -555,40 +743,36 @@ def write_markdown(pack: Dict[str, object]) -> Path:
     lines.append("This pack summarises the language, terms, and signal types currently used in CallAnalysisApp for positive scoring, vulnerability detection, and unhappy-customer detection.")
     lines.append("")
     lines.append(f"Generated: {pack['metadata']['generated_at_utc']}")
+    lines.append(f"Pack version: {pack['metadata']['pack_version']}")
     lines.append("")
-    lines.append("## 1. Call-Type Category Mapping")
+    lines.append("## 1. Purpose and Boundaries")
+    lines.append("")
+    lines.append("- Intended audience: project manager, AI vendor implementation team, conversation designers, and QA or risk reviewers.")
+    lines.append("- Integration model: offline handoff pack only. This export gives the vendor the signal definitions and guidance at a point in time, but not live access to the app.")
+    lines.append("- Use this pack as operational guidance input rather than as a compliance policy or rigid script library.")
+    lines.append("- Where vulnerability, safeguarding, or severe distress is detected, supportive handling should take precedence over collections pressure.")
+    lines.append("")
+    lines.append("## 2. Implementation Summary")
+    lines.append("")
+    lines.append("- Literal phrases: use as example wording or direct match seeds, not as the only accepted wording.")
+    lines.append("- Regex patterns: keep as pattern-based rules rather than flattening them into exact strings.")
+    lines.append("- Priority field: only vulnerability keywords carry direct source priority; other rows should be prioritised by severity and local policy.")
+    lines.append("- Low-confidence or unmatched calls should be logged and reviewed rather than answered too confidently.")
+    lines.append("")
+    lines.append("## 3. Delivery Checklist")
+    lines.append("")
+    for item in pack["delivery_checklist"]:
+        lines.append(f"- {item}")
+    lines.append("")
+    lines.append("## 4. Call-Type Category Mapping")
     lines.append("")
     for call_type, categories in pack["call_type_category_map"].items():
         lines.append(f"- **{call_type}**: {', '.join(categories)}")
     lines.append("")
-    lines.append("## 2. Positive / Desired Agent Language")
+    lines.append("## 5. Positive / Desired Agent Language")
     lines.append("")
     for item in pack["positive_language"]:
         lines.append(f"### {item['category']}")
-        lines.append("")
-        lines.append(f"- Why it matters: {item['why_important']}")
-        lines.append(f"- Recommended response style: {item['recommended_response_style']}")
-        lines.append("- Example phrases:")
-        for phrase in item["example_phrases"][:30]:
-            lines.append(f"  - {phrase}")
-        if len(item["example_phrases"]) > 30:
-            lines.append(f"  - ... plus {len(item['example_phrases']) - 30} more phrases in the JSON/CSV export")
-        lines.append("")
-    lines.append("## 3. Vulnerability Signals")
-    lines.append("")
-    for item in pack["vulnerability_signals"]:
-        lines.append(f"### {item['signal_group']}")
-        lines.append("")
-        lines.append(f"- Why it matters: {item['why_important']}")
-        lines.append(f"- Recommended response style: {item['recommended_response_style']}")
-        lines.append(f"- Example terms: {', '.join(item['terms'][:20])}")
-        if len(item["terms"]) > 20:
-            lines.append(f"- Additional terms available in export: {len(item['terms']) - 20}")
-        lines.append("")
-    lines.append("## 4. Unhappy Customer Signals")
-    lines.append("")
-    for item in pack["unhappy_customer_signals"]:
-        lines.append(f"### {item['signal_group']}")
         lines.append("")
         lines.append(f"- Why it matters: {item['why_important']}")
         lines.append(f"- Recommended response style: {item['recommended_response_style']}")
@@ -598,12 +782,52 @@ def write_markdown(pack: Dict[str, object]) -> Path:
         if len(item["example_phrases"]) > 20:
             lines.append(f"  - ... plus {len(item['example_phrases']) - 20} more phrases in the JSON/CSV export")
         lines.append("")
-    lines.append("## 5. Recommended Response Principles")
+    lines.append("## 6. Vulnerability Signals")
+    lines.append("")
+    for item in pack["vulnerability_signals"]:
+        lines.append(f"### {item['signal_group']}")
+        lines.append("")
+        lines.append(f"- Why it matters: {item['why_important']}")
+        lines.append(f"- Recommended response style: {item['recommended_response_style']}")
+        lines.append(f"- Example terms: {', '.join(item['terms'][:15])}")
+        if len(item["terms"]) > 15:
+            lines.append(f"- Additional terms available in export: {len(item['terms']) - 15}")
+        lines.append("")
+    lines.append("## 7. Unhappy Customer Signals")
+    lines.append("")
+    for item in pack["unhappy_customer_signals"]:
+        lines.append(f"### {item['signal_group']}")
+        lines.append("")
+        lines.append(f"- Why it matters: {item['why_important']}")
+        lines.append(f"- Recommended response style: {item['recommended_response_style']}")
+        lines.append("- Example phrases:")
+        for phrase in item["example_phrases"][:15]:
+            lines.append(f"  - {phrase}")
+        if len(item["example_phrases"]) > 15:
+            lines.append(f"  - ... plus {len(item['example_phrases']) - 15} more phrases in the JSON/CSV export")
+        lines.append("")
+    lines.append("## 8. Recommended Response Principles")
     lines.append("")
     for item in pack["recommended_response_principles"]:
         lines.append(f"- **{item['scenario']}**: {item['guidance']}")
     lines.append("")
-    lines.append("## 6. Source Notes")
+    lines.append("## 9. Change Control Guidance")
+    lines.append("")
+    for item in pack["change_controls"]:
+        lines.append(f"- **{item['change_area']}**: Owner: {item['owner']}. Approval needed: {item['approval_needed']}. Why: {item['reason']}")
+    lines.append("")
+    lines.append("## 10. Sample Test Scenarios")
+    lines.append("")
+    for item in pack["test_scenarios"]:
+        lines.append(f"### {item['scenario_id']}")
+        lines.append("")
+        lines.append(f"- Call type: {item['call_type']}")
+        lines.append(f"- Example customer utterance: {item['customer_utterance']}")
+        lines.append(f"- Expected detection: {', '.join(item['expected_detection'])}")
+        lines.append(f"- Expected agent behaviour: {item['expected_agent_behaviour']}")
+        lines.append(f"- Escalation expectation: {item['should_escalate']}")
+        lines.append("")
+    lines.append("## 11. Source Notes")
     lines.append("")
     lines.append("- Positive language and call-type mapping come from `config.yaml`.")
     lines.append("- Unhappy-customer signals come from `customer_sentiment.py` pattern matching.")
@@ -617,19 +841,23 @@ def write_markdown(pack: Dict[str, object]) -> Path:
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     pack = build_pack()
+    cover_note_path = write_cover_note(pack)
     json_path = write_json(pack)
     csv_path = write_csv(pack)
     markdown_path = write_markdown(pack)
+    manifest_path = write_manifest(pack)
 
     summary = {
+        "cover_note": str(cover_note_path),
         "json": str(json_path),
         "csv": str(csv_path),
         "markdown": str(markdown_path),
+        "manifest": str(manifest_path),
         "positive_categories": len(pack["positive_language"]),
         "vulnerability_groups": len(pack["vulnerability_signals"]),
         "unhappy_signal_groups": len(pack["unhappy_customer_signals"]),
     }
-    print(json.dumps(summary, indent=2))
+    print(json.dumps(summary, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":

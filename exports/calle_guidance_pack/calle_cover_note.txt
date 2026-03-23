@@ -1,24 +1,26 @@
-Subject: Call language and customer-signal guidance for Calle AI
+Subject: Calle AI language, signal, and implementation pack
 
 Hi,
 
-Attached is a guidance pack extracted from our CallAnalysisApp so your team can use the same kinds of signals and language patterns that we currently score for internally.
+Attached is an offline handoff pack extracted from CallAnalysisApp so your team can configure the AI agent using the same broad language and customer-signal themes that we currently score internally.
 
 What is included:
-- Positive or desired agent language patterns
-- Call-type-to-category mappings
-- Vulnerability-related terms and grouped risk signals
-- Unhappy customer indicators, including complaint, escalation, urgency, and confusion signals
-- High-level recommended response principles inferred from our current scoring logic
+- A human-readable overview of positive language, vulnerability signals, unhappy-customer signals, and response principles
+- A machine-readable JSON export for implementation and mapping
+- A flat CSV export for spreadsheet review or ETL
+- A delivery checklist, governance notes, and sample test scenarios
 
-Files included:
-- calle_guidance_pack.md: Human-readable summary
-- calle_guidance_pack.json: Structured machine-readable pack
-- calle_guidance_pack.csv: Flat import-friendly export
+How to use it:
+- Treat this as guidance input for configuration, retrieval, routing, and QA
+- Preserve signal groups and categories where possible
+- Log low-confidence or unmatched interactions so we can improve the next version
 
-Important note:
-This pack reflects the language and signal patterns we currently use for scoring and guidance inside the app. It is intended as operational guidance input rather than a strict policy or compliance rulebook.
+Important boundaries:
+- This is an offline export, not a live API integration
+- The pack reflects the current app logic as at generation time and should be refreshed when major logic or language changes are agreed
+- It is not a substitute for your own compliance, QA, or safeguarding controls
 
-If helpful, we can also provide a second pass later with narrower "must-detect" signals only.
+Pack version: 2.0
+Generated: 2026-03-23T11:26:44.828071+00:00
 
 Best,
