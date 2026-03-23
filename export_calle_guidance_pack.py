@@ -726,6 +726,7 @@ def write_manifest(pack: Dict[str, object]) -> Path:
         "files": [
             "calle_cover_note.txt",
             "calle_guidance_pack.md",
+            "calle_guidance_pack_detailed.txt",
             "calle_guidance_pack.json",
             "calle_guidance_pack.csv",
             "manifest.json",
@@ -838,6 +839,74 @@ def write_markdown(pack: Dict[str, object]) -> Path:
     return path
 
 
+def write_detailed_text(pack: Dict[str, object]) -> Path:
+    path = OUTPUT_DIR / "calle_guidance_pack_detailed.txt"
+    lines: List[str] = []
+    lines.append("Calle AI Guidance Pack")
+    lines.append("Detailed Offline Export")
+    lines.append("")
+    lines.append(f"Generated: {pack['metadata']['generated_at_utc']}")
+    lines.append(f"Pack version: {pack['metadata']['pack_version']}")
+    lines.append("")
+    lines.append("Purpose:")
+    lines.append(pack["metadata"]["purpose"])
+    lines.append("")
+    lines.append("Implementation Guardrails:")
+    for item in pack["implementation_guardrails"]:
+        lines.append(f"- {item}")
+    lines.append("")
+    lines.append("Call-Type Category Mapping:")
+    for call_type, categories in pack["call_type_category_map"].items():
+        lines.append(f"- {call_type}: {', '.join(categories)}")
+    lines.append("")
+    lines.append("Positive Language Categories:")
+    for item in pack["positive_language"]:
+        lines.append("-" * 80)
+        lines.append(f"Category: {item['category']}")
+        lines.append(f"Why it matters: {item['why_important']}")
+        lines.append(f"Recommended response style: {item['recommended_response_style']}")
+        lines.append("Example phrases:")
+        for phrase in item["example_phrases"]:
+            lines.append(f"  - {phrase}")
+        lines.append("")
+    lines.append("Vulnerability Signal Groups:")
+    for item in pack["vulnerability_signals"]:
+        lines.append("-" * 80)
+        lines.append(f"Signal group: {item['signal_group']}")
+        lines.append(f"Why it matters: {item['why_important']}")
+        lines.append(f"Recommended response style: {item['recommended_response_style']}")
+        lines.append("Terms:")
+        for term in item["terms"]:
+            lines.append(f"  - {term}")
+        lines.append("")
+    lines.append("Unhappy Customer Signals:")
+    for item in pack["unhappy_customer_signals"]:
+        lines.append("-" * 80)
+        lines.append(f"Signal group: {item['signal_group']}")
+        lines.append(f"Why it matters: {item['why_important']}")
+        lines.append(f"Recommended response style: {item['recommended_response_style']}")
+        lines.append("Example phrases:")
+        for phrase in item["example_phrases"]:
+            lines.append(f"  - {phrase}")
+        lines.append("")
+    lines.append("Recommended Response Principles:")
+    for item in pack["recommended_response_principles"]:
+        lines.append(f"- {item['scenario']}: {item['guidance']}")
+    lines.append("")
+    lines.append("Sample Test Scenarios:")
+    for item in pack["test_scenarios"]:
+        lines.append("-" * 80)
+        lines.append(f"Scenario ID: {item['scenario_id']}")
+        lines.append(f"Call type: {item['call_type']}")
+        lines.append(f"Customer utterance: {item['customer_utterance']}")
+        lines.append(f"Expected detection: {', '.join(item['expected_detection'])}")
+        lines.append(f"Expected agent behaviour: {item['expected_agent_behaviour']}")
+        lines.append(f"Escalation expectation: {item['should_escalate']}")
+        lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
+
+
 def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     pack = build_pack()
@@ -845,6 +914,7 @@ def main() -> None:
     json_path = write_json(pack)
     csv_path = write_csv(pack)
     markdown_path = write_markdown(pack)
+    detailed_text_path = write_detailed_text(pack)
     manifest_path = write_manifest(pack)
 
     summary = {
@@ -852,6 +922,7 @@ def main() -> None:
         "json": str(json_path),
         "csv": str(csv_path),
         "markdown": str(markdown_path),
+        "detailed_text": str(detailed_text_path),
         "manifest": str(manifest_path),
         "positive_categories": len(pack["positive_language"]),
         "vulnerability_groups": len(pack["vulnerability_signals"]),

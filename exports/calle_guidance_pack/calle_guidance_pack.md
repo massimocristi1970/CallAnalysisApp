@@ -2,7 +2,7 @@
 
 This pack summarises the language, terms, and signal types currently used in CallAnalysisApp for positive scoring, vulnerability detection, and unhappy-customer detection.
 
-Generated: 2026-03-23T11:26:44.828071+00:00
+Generated: 2026-03-23T16:03:13.257016+00:00
 Pack version: 2.0
 
 ## 1. Purpose and Boundaries
